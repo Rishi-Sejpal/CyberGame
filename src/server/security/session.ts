@@ -299,6 +299,6 @@ export async function ensureProfile(userId: string, displayName: string) {
         unlockedLevels: ['networking.l1'],
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
   );
 }

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { ZodError, ZodType } from 'zod';
+import { API_ERROR_STATUS, type ApiErrorCode } from '@/shared/api-error';
 
 /**
  * Application error taxonomy.
@@ -11,34 +12,11 @@ import type { ZodError, ZodType } from 'zod';
  * never reach the client.
  */
 
-export type ErrorCode =
-  | 'bad_request'
-  | 'validation_failed'
-  | 'unauthorized'
-  | 'forbidden'
-  | 'not_found'
-  | 'conflict'
-  | 'unprocessable'
-  | 'too_many_requests'
-  | 'csrf_rejected'
-  | 'locked'
-  | 'internal_error'
-  | 'service_unavailable';
+export type ErrorCode = ApiErrorCode;
 
-const STATUS_BY_CODE: Record<ErrorCode, number> = {
-  bad_request: 400,
-  validation_failed: 422,
-  unauthorized: 401,
-  forbidden: 403,
-  not_found: 404,
-  conflict: 409,
-  unprocessable: 422,
-  too_many_requests: 429,
-  csrf_rejected: 403,
-  locked: 423,
-  internal_error: 500,
-  service_unavailable: 503,
-};
+const STATUS_BY_CODE: Record<ErrorCode, number> = API_ERROR_STATUS;
+
+export type { ApiErrorCode, ApiErrorBody } from '@/shared/api-error';
 
 /**
  * Generic authentication failure. Register/login/reset all return this exact

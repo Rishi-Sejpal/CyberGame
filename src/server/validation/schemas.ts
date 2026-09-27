@@ -1,5 +1,13 @@
 import { z } from 'zod';
 import { AppError } from '@/server/http/errors';
+import {
+  EMAIL_MAX,
+  EMAIL_RE,
+  isReservedUsername,
+  USERNAME_MAX,
+  USERNAME_MIN,
+  USERNAME_RE,
+} from '@/shared/identity-rules';
 
 /**
  * Centralised request validation.
@@ -18,9 +26,6 @@ import { AppError } from '@/server/http/errors';
  *    payload is rejected before it is ever parsed by Mongoose.
  */
 
-const USERNAME_RE = /^[a-z0-9](?:[a-z0-9_-]{1,18})[a-z0-9]$/;
-const EMAIL_RE = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}$/i;
-
 // ---------------------------------------------------------------------------
 // Primitives
 // ---------------------------------------------------------------------------
@@ -28,21 +33,19 @@ const EMAIL_RE = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+
 export const usernameSchema = z
   .string({ error: 'Username is required.' })
   .trim()
-  .min(3, 'Username must be at least 3 characters.')
-  .max(20, 'Username must be at most 20 characters.')
+  .min(USERNAME_MIN, `Username must be at least ${USERNAME_MIN} characters.`)
+  .max(USERNAME_MAX, `Username must be at most ${USERNAME_MAX} characters.`)
   // Lowercase, digits, underscore and dash only. No leading/trailing separator.
   .regex(USERNAME_RE, 'Use 3-20 lowercase letters, digits, "_" or "-".')
   // Reserved handles that would be confusing or impersonate the app itself.
-  .refine((v) => !['admin', 'administrator', 'root', 'system', 'support', 'staff', 'mod', 'cybergrid', 'vera', 'null', 'undefined'].includes(v), {
-    message: 'That username is reserved.',
-  });
+  .refine((v) => !isReservedUsername(v), { message: 'That username is reserved.' });
 
 export const emailSchema = z
   .string({ error: 'Email is required.' })
   .trim()
   .toLowerCase()
   .min(3, 'Email is required.')
-  .max(254, 'Email must be at most 254 characters.')
+  .max(EMAIL_MAX, `Email must be at most ${EMAIL_MAX} characters.`)
   .regex(EMAIL_RE, 'Enter a valid email address.');
 
 export const passwordSchema = z

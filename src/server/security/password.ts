@@ -28,103 +28,21 @@ import { pepperedHash } from './crypto';
  *   policy and `rehashIfNeeded()` transparently upgrades on next login.
  * - **Uniform failure.** A malformed stored hash reads as "wrong password"
  *   rather than a 500, so an attacker cannot use error shape as an oracle.
+ *
+ * The password *policy* is not defined here — it lives in the shared module so
+ * the client-side strength meter and this server agree by construction.
  */
 
 const PASSWORD_ALGORITHM = 2; // argon2id
 
-export const PASSWORD_POLICY = {
-  minLength: 12,
-  maxLength: 200,
-  minLowercase: 1,
-  minUppercase: 1,
-  minDigits: 1,
-  minSymbols: 1,
-  /** Rejected outright: the credentials everybody tries first. */
-  commonPasswords: new Set([
-    'password',
-    'password1',
-    'password123',
-    'passw0rd',
-    '12345678',
-    '123456789',
-    '1234567890',
-    'qwertyuiop',
-    'letmein123',
-    'iloveyou',
-    'admin123',
-    'administrator',
-    'welcome123',
-    'changeme',
-    'trustno1',
-    'monkey123',
-    'dragon123',
-    'football123',
-    'baseball123',
-    'superman123',
-    'starwars123',
-    'cyber123',
-    'hackerman',
-    'letmein',
-    'football',
-    'baseball',
-    'shadow',
-    'master',
-    'dragon',
-    'monkey',
-    'abc123',
-  ]),
-} as const;
-
-export interface PasswordPolicyResult {
-  ok: boolean;
-  /** Machine-readable reason codes; the UI maps these to friendly copy. */
-  issues: string[];
-}
-
 /**
- * Pure policy check. Used by the register/reset endpoints AND by the client so
- * the two agree, but the server result is always authoritative.
+ * The policy itself now lives in `src/shared/password-policy.ts` so the browser
+ * and this module cannot disagree about what a valid password is. Only the
+ * hashing primitives remain here. Re-exported because callers already import
+ * them from this path.
  */
-export function checkPasswordPolicy(
-  password: string,
-  context: { username?: string; email?: string } = {},
-): PasswordPolicyResult {
-  const issues: string[] = [];
-
-  if (typeof password !== 'string' || password.length < PASSWORD_POLICY.minLength) {
-    issues.push(`too_short_min_${PASSWORD_POLICY.minLength}`);
-  }
-  if (typeof password === 'string' && password.length > PASSWORD_POLICY.maxLength) {
-    issues.push(`too_long_max_${PASSWORD_POLICY.maxLength}`);
-  }
-
-  const lower = (password ?? '').toLowerCase();
-  if (PASSWORD_POLICY.commonPasswords.has(lower)) issues.push('too_common');
-
-  const username = context.username?.trim();
-  if (username && username.length >= 3 && lower.includes(username.toLowerCase())) {
-    issues.push('contains_username');
-  }
-  if (context.email) {
-    const local = context.email.split('@')[0] ?? '';
-    if (local.length >= 3 && lower.includes(local.toLowerCase())) issues.push('contains_email');
-  }
-
-  const hasLower = /[a-z]/.test(password ?? '');
-  const hasUpper = /[A-Z]/.test(password ?? '');
-  const hasDigit = /\d/.test(password ?? '');
-  const hasSymbol = /[^A-Za-z0-9]/.test(password ?? '');
-
-  if (!hasLower) issues.push('needs_lowercase');
-  if (!hasUpper) issues.push('needs_uppercase');
-  if (!hasDigit) issues.push('needs_digit');
-  if (!hasSymbol) issues.push('needs_symbol');
-
-  const classes = [hasLower, hasUpper, hasDigit, hasSymbol].filter(Boolean).length;
-  if (classes < 3) issues.push('needs_three_classes');
-
-  return { ok: issues.length === 0, issues: [...new Set(issues)] };
-}
+export { PASSWORD_POLICY, checkPasswordPolicy, passwordIssueMessage } from '@/shared/password-policy';
+export type { PasswordIssue, PasswordPolicyResult } from '@/shared/password-policy';
 
 function pepperKey(): Buffer {
   return Buffer.from(env().PASSWORD_PEPPER, 'utf8');
