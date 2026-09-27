@@ -1,0 +1,11 @@
+Press Start 2P
+
+Copyright (c) 2012, Cody "CodeMan38" Boisclair (www.codeman38.com), with Font Bureau
+(https://www.fontbureau.com/), with Google Fonts modifications (https://github.com/google/fonts).
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+The full licence text is available at https://scripts.sil.org/OFL
+
+Bundled subset: latin (basic + latin-ext not included). Vendored so the app never
+depends on a third-party font CDN at runtime or build time, which keeps the CSP
+at `default-src 'self'` and avoids shipping player IP data to a font vendor.

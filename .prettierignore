@@ -1,0 +1,13 @@
+node_modules
+.next
+out
+build
+coverage
+tests/.artifacts
+.mongo
+.mongo-*
+public/assets/generated
+.env
+.env.local
+.env.*.local
+package-lock.json
