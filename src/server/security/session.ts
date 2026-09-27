@@ -8,6 +8,7 @@ import { env, cookiesAreSecure } from '@/server/config/env';
 import { generateSecret, hashToken } from './crypto';
 import { auditDetached } from './audit';
 import type { CookieJar, CookieOptions } from './cookies';
+import type { SessionInfoView } from '@/shared/account';
 
 /**
  * Server-side sessions.
@@ -40,16 +41,6 @@ export interface SessionUser {
   emailVerified: boolean;
   sessionId: string;
   sessionFingerprint: string;
-}
-
-export interface SessionInfo {
-  id: string;
-  label: string;
-  createdAt: Date;
-  lastSeenAt: Date;
-  expiresAt: Date;
-  ip: string | null;
-  current: boolean;
 }
 
 export interface ResolvedSession {
@@ -258,7 +249,19 @@ export async function revokeAllSessions(
   return result.modifiedCount;
 }
 
-export async function listSessions(userId: string, currentSessionId: string): Promise<SessionInfo[]> {
+/**
+ * The active-session list, in wire form.
+ *
+ * Returns `SessionInfoView` — ISO-8601 strings, not `Date` — so the endpoint and
+ * the component that renders it are checked against the *same* type. Handing
+ * `Date`s to `ok()` would serialise them into strings that no compiler ever
+ * compares against the client's declaration, and a renamed field or a forgotten
+ * `toIso()` would surface as `Invalid Date` in the UI instead of a build error.
+ */
+export async function listSessions(
+  userId: string,
+  currentSessionId: string,
+): Promise<SessionInfoView[]> {
   await connectDb();
   const rows = await SessionModel.find({ userId, revokedAt: null })
     .sort({ lastSeenAt: -1 })
@@ -268,9 +271,9 @@ export async function listSessions(userId: string, currentSessionId: string): Pr
   return rows.map((row) => ({
     id: String(row._id),
     label: row.label,
-    createdAt: new Date(row.createdAt),
-    lastSeenAt: row.lastSeenAt,
-    expiresAt: row.expiresAt,
+    createdAt: new Date(row.createdAt).toISOString(),
+    lastSeenAt: new Date(row.lastSeenAt).toISOString(),
+    expiresAt: new Date(row.expiresAt).toISOString(),
     ip: row.ip,
     current: String(row._id) === currentSessionId,
   }));

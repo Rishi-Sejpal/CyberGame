@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { connectDb } from '@/server/db/connect';
 import { ProfileModel } from '@/server/db/models/profile.model';
 import { UserModel } from '@/server/db/models/user.model';
-import { createCookieJar, cookieSourceFromHeader } from '@/server/security/cookies';
+import { createCookieJar, cookieSourceFromStore } from '@/server/security/cookies';
 import { ensureProfile, resolveSession } from '@/server/security/session';
 import { csrfCookieName } from '@/server/security/csrf';
 import { AuthProvider } from '@/components/auth/auth-provider';
@@ -63,7 +63,7 @@ export async function loadShellData(): Promise<{
   sessionExpiresAt: string;
 }> {
   const store = await cookies();
-  const jar = createCookieJar(cookieSourceFromHeader(store.get('cookie')?.toString() ?? null));
+  const jar = createCookieJar(cookieSourceFromStore(store));
 
   const session = await resolveSession(jar);
   if (!session) {

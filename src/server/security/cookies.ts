@@ -124,6 +124,29 @@ export function readCookie(header: string | null | undefined, name: string): str
   return null;
 }
 
+/**
+ * A source backed by Next's `cookies()` store.
+ *
+ * In a Server Component there is no `Request` object, so the raw `Cookie:`
+ * header is not reachable — and Next does **not** expose a synthetic `cookie`
+ * entry to stand in for it. `store.get('cookie')` returns `undefined`, which
+ * means a jar built that way silently reads nothing and every session lookup
+ * fails. Read the individual cookies by name instead.
+ *
+ * Typed structurally rather than as `ReadonlyRequestCookies` so this module
+ * stays framework-agnostic and importable from the edge.
+ */
+export function cookieSourceFromStore(store: {
+  get(name: string): { value: string } | undefined;
+}): ReadableCookieSource {
+  return {
+    get(name) {
+      const cookie = store.get(name);
+      return cookie === undefined ? undefined : { value: cookie.value };
+    },
+  };
+}
+
 /** A source backed by a raw `Cookie:` header string. */
 export function cookieSourceFromHeader(header: string | null | undefined): ReadableCookieSource {
   return {

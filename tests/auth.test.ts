@@ -15,8 +15,14 @@ const { POST: forgotPassword } = await import('@/app/api/auth/forgot-password/ro
 const { POST: resetPassword } = await import('@/app/api/auth/reset-password/route');
 const { GET: sessions } = await import('@/app/api/auth/sessions/route');
 const { DELETE: revokeSession } = await import('@/app/api/auth/sessions/[id]/route');
-const { serializeCookie, serializeDeletion, createCookieJar, cookieSourceFromHeader, readCookie } =
-  await import('@/server/security/cookies');
+const {
+  serializeCookie,
+  serializeDeletion,
+  createCookieJar,
+  cookieSourceFromHeader,
+  cookieSourceFromStore,
+  readCookie,
+} = await import('@/server/security/cookies');
 const { timingSafeEqual } = await import('@/server/security/timing');
 const { POST: logoutAll } = await import('@/app/api/auth/logout-all/route');
 const { POST: verifyEmail } = await import('@/app/api/auth/verify-email/route');
@@ -605,6 +611,37 @@ describe('cookie serialisation', () => {
 
   it('survives a malformed percent escape instead of throwing', () => {
     expect(readCookie('cg_session=%E0%A4%A', 'cg_session')).toBe('%E0%A4%A');
+  });
+
+  it('reads cookies out of a Next cookie store by name', () => {
+    // Regression: a Server Component has no `Request`, so the jar used to be built
+    // from `store.get('cookie')`. Next's `cookies()` exposes no synthetic
+    // `cookie` entry, so that lookup returned undefined and every jar read
+    // nothing — which made each signed-in page redirect to /login while the API
+    // routes, built from the real header, kept working. Typecheck, build and unit
+    // tests were all green; only a live request exposed it.
+    const nextStore = {
+      getAll: () => [
+        { name: 'cg_session', value: 'abc' },
+        { name: 'cg_csrf', value: 'def' },
+      ],
+      get: (name: string) =>
+        name === 'cg_session'
+          ? { name, value: 'abc' }
+          : name === 'cg_csrf'
+            ? { name, value: 'def' }
+            : undefined,
+    };
+
+    const jar = createCookieJar(cookieSourceFromStore(nextStore));
+    expect(jar.get('cg_session')).toBe('abc');
+    expect(jar.get('cg_csrf')).toBe('def');
+    expect(jar.get('absent')).toBeUndefined();
+
+    // The trap itself: reconstructing a header from that store yields nothing.
+    expect(nextStore.get('cookie')).toBeUndefined();
+    expect(createCookieJar(cookieSourceFromHeader(nextStore.get('cookie')?.value)).get('cg_session'))
+      .toBeUndefined();
   });
 
   it('applies queued writes and deletions onto a response', () => {

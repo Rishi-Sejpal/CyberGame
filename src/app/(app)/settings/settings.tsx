@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Panel, PanelHeader, Spinner } from '@/components/ui/primitives';
 import { Field, PasswordField } from '@/components/ui/form';
@@ -34,7 +34,9 @@ export function Settings({ user, profile }: { user: AccountView; profile: Profil
 
       <ProfilePanel user={user} profile={profile} />
       <PasswordPanel user={user} />
-      <SessionsPanel />
+      <div id="sessions">
+        <SessionsPanel />
+      </div>
       <DangerZonePanel />
     </div>
   );
@@ -277,9 +279,29 @@ function SessionsPanel() {
   // revocation, and a page refresh to see the result is a poor experience. The
   // ids are opaque and the endpoint is scoped to the caller, so there is nothing
   // here that a server render would protect.
-  useState(() => {
-    void load();
-  });
+  //
+  // `useEffect`, not a `useState` initializer: an initializer that fires a request
+  // runs during render, and React runs render twice in StrictMode — two requests,
+  // and a `setState` from inside a render pass.
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const data = await authApi.listSessions();
+        if (active) setSessions(data.sessions);
+      } catch (err) {
+        if (active) {
+          setSessions([]);
+          setError(errorMessage(err));
+        }
+      }
+    })();
+    return () => {
+      // Ignore a response that arrives after the panel is gone, or after the
+      // player navigated to /login mid-flight.
+      active = false;
+    };
+  }, []);
 
   async function load() {
     try {

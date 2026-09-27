@@ -223,11 +223,17 @@ export interface PasswordStrength {
   hint: string;
 }
 
-/** Common keyboard/word patterns that inflate naive entropy estimates. */
-const WEAK_PATTERNS: Array<[RegExp, string]> = [
-  [/(.)\1{2,}/, 'Repeated character runs.'],
-  [/^(?:19|20)\d{2}$/, 'Looks like a year.'],
-  [/(?:1234|2345|3456|4567|5678|6789)/, 'Common number sequence.'],
+/**
+ * Common patterns that inflate a naive entropy estimate.
+ *
+ * These carry no message: the meter explains itself only through the policy
+ * violation it is reporting, so a password that *passes* the policy is never
+ * annotated with advice the policy does not actually require.
+ */
+const WEAK_PATTERNS: readonly RegExp[] = [
+  /(.)\1{2,}/, // repeated character runs
+  /^(?:19|20)\d{2}$/, // a bare year
+  /1234|2345|3456|4567|5678|6789/, // a number sequence
 ];
 
 /**
@@ -306,7 +312,7 @@ export function scorePassword(
 
   const walks = countKeyboardWalks(value);
   if (walks > 0) score = Math.max(1, score - Math.min(MAX_WALK_PENALTY, walks));
-  for (const [pattern] of WEAK_PATTERNS) {
+  for (const pattern of WEAK_PATTERNS) {
     if (pattern.test(value)) {
       score = Math.max(1, score - 1);
       break;

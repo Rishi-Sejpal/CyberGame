@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { createCookieJar, cookieSourceFromHeader } from '@/server/security/cookies';
+import { createCookieJar, cookieSourceFromStore } from '@/server/security/cookies';
 import { resolveSession } from '@/server/security/session';
 import { MODULES_PLANNED_NOTE } from './landing-links';
 
@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
  */
 export default async function LandingPage() {
   const store = await cookies();
-  const jar = createCookieJar(cookieSourceFromHeader(store.get('cookie')?.toString() ?? null));
+  const jar = createCookieJar(cookieSourceFromStore(store));
   const session = await resolveSession(jar);
 
   return (

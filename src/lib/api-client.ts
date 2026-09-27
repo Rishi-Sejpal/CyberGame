@@ -89,8 +89,6 @@ export interface ApiRequestOptions {
   body?: unknown;
   timeoutMs?: number;
   signal?: AbortSignal;
-  /** Overrides CSRF injection. Only used by tests and by the logout beacon. */
-  csrf?: boolean;
   headers?: Record<string, string>;
 }
 
