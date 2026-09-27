@@ -23,10 +23,8 @@
     "test:watch": "node node_modules/vitest/vitest.mjs",
     "test:coverage": "node node_modules/vitest/vitest.mjs run --coverage",
     "db:dev": "node scripts/dev-db.mjs",
+    "db:status": "node scripts/dev-db.mjs status",
     "db:stop": "node scripts/dev-db.mjs stop",
-    "seed": "node scripts/seed.mjs",
-    "seed:reset": "node scripts/seed.mjs --reset",
-    "assets:build": "node scripts/build-assets.mjs",
     "verify": "npm run lint && npm run typecheck && npm run test"
   },
   "dependencies": {

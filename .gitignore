@@ -27,9 +27,6 @@ next-env.d.ts
 .env.*.local
 !.env.example
 
-# generated art output
-/public/assets/generated/
-
 # misc
 .DS_Store
 Thumbs.db

@@ -16,7 +16,6 @@ process.env.TEST_MONGODB_URI = process.env.MONGODB_URI;
 process.env.EMAIL_TRANSPORT = 'outbox';
 process.env.EMAIL_FROM = 'CYBERGRID Test <no-reply@cybergrid.test>';
 process.env.DEV_MAIL_PREVIEW = 'false';
-process.env.AUTO_SEED_CONTENT = 'false';
 process.env.AUTH_TEST_FAST_HASH = 'true';
 // Test isolation: do not honour proxy headers unless a test opts in.
 process.env.TRUST_PROXY = '0';

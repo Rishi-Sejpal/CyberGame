@@ -65,10 +65,6 @@ const rawSchema = z
     SMTP_URL: z.string().optional(),
     EMAIL_FROM: z.string().min(3).default('CYBERGRID <no-reply@cybergrid.local>'),
 
-    AUTO_SEED_CONTENT: z
-      .enum(['true', 'false'])
-      .default('false')
-      .transform((v) => v === 'true'),
     DEV_MAIL_PREVIEW: z
       .enum(['true', 'false'])
       .default('false')
@@ -97,7 +93,7 @@ const rawSchema = z
       });
     }
 
-    for (const flag of ['AUTO_SEED_CONTENT', 'DEV_MAIL_PREVIEW', 'AUTH_TEST_FAST_HASH'] as const) {
+    for (const flag of ['DEV_MAIL_PREVIEW', 'AUTH_TEST_FAST_HASH'] as const) {
       if (value[flag]) {
         ctx.addIssue({
           code: 'custom',
