@@ -173,7 +173,7 @@ export function isOriginAllowed(origin: string | null | undefined): boolean {
 }
 
 /** True when cookies must carry the `Secure` attribute. */
-export function useSecureCookies(): boolean {
+export function cookiesAreSecure(): boolean {
   return isProduction() || new URL(env().APP_URL).protocol === 'https:';
 }
 
@@ -192,7 +192,7 @@ export function argon2Params() {
   const fast = e.AUTH_TEST_FAST_HASH && !isProduction();
   return {
     algorithm: 2 as const, // argon2id
-    memoryCost: fast ? 256 : e.ARGON2_MEMORY_COST,
+    memoryCost: fast ? 8 * 1024 : e.ARGON2_MEMORY_COST,
     timeCost: fast ? 1 : e.ARGON2_TIME_COST,
     parallelism: fast ? 1 : e.ARGON2_PARALLELISM,
   };

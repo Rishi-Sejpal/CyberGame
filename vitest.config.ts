@@ -23,6 +23,11 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: { '@': r('./src') },
+    alias: [
+      { find: /^@\/(.*)$/, replacement: `${r('./src')}/$1` },
+      // `server-only` intentionally throws outside a React Server graph. In the
+      // Node test environment every module is server-side, so stub it out.
+      { find: /^server-only$/, replacement: r('./tests/stubs/server-only.ts') },
+    ],
   },
 });

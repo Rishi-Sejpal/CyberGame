@@ -16,9 +16,10 @@ next-env.d.ts
 /coverage
 /tests/.artifacts
 
-# local data (dev mongod dbpath)
+# local data (dev mongod dbpath, test mongod dbpath)
 /.mongo
 /.mongo-*
+/.tmp
 
 # env files
 .env

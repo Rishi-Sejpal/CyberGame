@@ -11,3 +11,5 @@ public/assets/generated
 .env.local
 .env.*.local
 package-lock.json
+.tmp
+.mongo
