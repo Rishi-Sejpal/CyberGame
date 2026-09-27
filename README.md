@@ -48,16 +48,16 @@ Point `MONGODB_URI` at any reachable instance and skip `npm run db:dev`.
 
 ## Scripts
 
-| Script | What it does |
-| --- | --- |
-| `npm run dev` | Development server |
-| `npm run build` / `npm start` | Production build / serve |
-| `npm run lint` / `npm run typecheck` | ESLint, `tsc --noEmit` |
-| `npm test` | Vitest, with a throwaway MongoDB on its own port |
-| `npm run test:watch`, `npm run test:coverage` | As above, interactive / instrumented |
-| `npm run verify` | `lint` + `typecheck` + `test` — run this before pushing |
-| `npm run format` / `format:check` | Prettier |
-| `npm run db:dev` / `db:stop` / `db:status` | Local MongoDB, foreground / stop / status |
+| Script                                        | What it does                                                             |
+| --------------------------------------------- | ------------------------------------------------------------------------ |
+| `npm run dev`                                 | Development server                                                       |
+| `npm run build` / `npm start`                 | Production build / serve                                                 |
+| `npm run lint` / `npm run typecheck`          | ESLint, `tsc --noEmit`                                                   |
+| `npm test`                                    | Vitest, with a throwaway MongoDB on its own port                         |
+| `npm run test:watch`, `npm run test:coverage` | As above, interactive / instrumented                                     |
+| `npm run verify`                              | `lint` + `typecheck` + `test` + `format:check` — run this before pushing |
+| `npm run format` / `format:check`             | Prettier                                                                 |
+| `npm run db:dev` / `db:stop` / `db:status`    | Local MongoDB, foreground / stop / status                                |
 
 Every script invokes its tool through Node directly. This repository lives on a
 filesystem that cannot create symlinks, so `npm install` must be run with

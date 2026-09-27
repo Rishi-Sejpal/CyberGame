@@ -12,16 +12,31 @@ import {
   verifyPassword,
 } from '@/server/security/password';
 import { generateSecret, hashToken, generateNumericCode } from '@/server/security/crypto';
-import { createSession, destroyCurrentSession, revokeAllSessions, sessionCookieName } from '@/server/security/session';
+import {
+  createSession,
+  destroyCurrentSession,
+  revokeAllSessions,
+  sessionCookieName,
+} from '@/server/security/session';
 import type { CookieJar } from '@/server/security/cookies';
 import { audit, auditDetached } from '@/server/security/audit';
 import { AppError, conflict, genericAuthFailure, tooManyRequests } from '@/server/http/errors';
-import { RATE_RULES, checkRateLimit } from '@/server/security/rate-limit';
-import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail, sendSecurityAlertEmail } from '@/server/email/templates';
+import { RATE_RULES, checkRateLimit, resetRateLimit } from '@/server/security/rate-limit';
+import {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  sendWelcomeEmail,
+  sendSecurityAlertEmail,
+} from '@/server/email/templates';
 import { maskEmail } from '@/server/email/service';
-import { PASSWORD_POLICY, checkPasswordPolicy, passwordPolicyMessage } from '@/shared/password-policy';
+import { checkPasswordPolicy, passwordPolicyMessage } from '@/shared/password-policy';
 import { toIso, type AccountView } from '@/shared/account';
-import type { ChangePasswordInput, LoginInput, RegisterInput, ResetPasswordInput } from '@/server/validation/schemas';
+import type {
+  ChangePasswordInput,
+  LoginInput,
+  RegisterInput,
+  ResetPasswordInput,
+} from '@/server/validation/schemas';
 
 /**
  * Authentication service.
@@ -77,11 +92,26 @@ const PUBLIC_USER_FIELDS = {
 export type PublicUser = AccountView;
 
 export function toPublicUser(user: Partial<UserDoc> & { _id: unknown }): PublicUser {
+  // Mongoose keeps schema fields in an internal `_doc`, so `{ ...doc }` yields an
+  // object with none of them — TypeScript cannot catch that, and the result is a
+  // silently wrong response (`id: "undefined"`, epoch `createdAt`) rather than an
+  // error. Fail loudly instead.
+  if (
+    !user._id ||
+    typeof user.username !== 'string' ||
+    typeof user.displayName !== 'string' ||
+    typeof user.email !== 'string'
+  ) {
+    throw new Error(
+      'toPublicUser received an unpopulated document — pass the document or its toObject(), not a spread of it',
+    );
+  }
+
   return {
     id: String(user._id),
-    username: user.username!,
-    displayName: user.displayName!,
-    email: user.email!,
+    username: user.username,
+    displayName: user.displayName,
+    email: user.email,
     role: user.role ?? 'player',
     status: user.status ?? 'pending_verification',
     emailVerified: Boolean(user.emailVerified),
@@ -101,7 +131,10 @@ export async function registerUser(
 ): Promise<PublicUser> {
   await connectDb();
 
-  const policy = checkPasswordPolicy(input.password, { username: input.username, email: input.email });
+  const policy = checkPasswordPolicy(input.password, {
+    username: input.username,
+    email: input.email,
+  });
   if (!policy.ok) {
     // Field-level detail is safe here: the caller is registering a *new*
     // account and learns nothing about existing ones.
@@ -207,8 +240,12 @@ export async function loginUser(
 ): Promise<PublicUser> {
   await connectDb();
 
-  // Per-account throttle, keyed on the identifier *and* the IP, so neither a
-  // single account nor a single host can be brute-forced in isolation.
+  // Coarse throttle keyed on the identifier alone, charged on every attempt
+  // whether or not the account exists — that is deliberate, since an unknown
+  // identifier has no failedLoginCount to lock and would otherwise be unlimited.
+  // The IP dimension is enforced separately by the route-level `auth.login`
+  // rule in `withApi`, which is keyed per client. Both buckets are cleared once
+  // the credentials check out, so an honest user is never rate limited.
   const identifier = input.identifier.toLowerCase();
   const perAccount = checkRateLimit(RATE_RULES['login-per-account'], `acct:${identifier}`);
   if (!perAccount.allowed) {
@@ -272,7 +309,10 @@ export async function loginUser(
   }
 
   if (user.status === 'suspended') {
-    throw new AppError('forbidden', 'This account is suspended. Contact support if you believe this is a mistake.');
+    throw new AppError(
+      'forbidden',
+      'This account is suspended. Contact support if you believe this is a mistake.',
+    );
   }
 
   if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
@@ -286,14 +326,19 @@ export async function loginUser(
       metadata: { until: user.lockedUntil.toISOString() },
     });
     throw new AppError('locked', 'Too many failed attempts. Try again in 15 minutes.', {
-      headers: { 'Retry-After': String(Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000)) },
+      headers: {
+        'Retry-After': String(Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000)),
+      },
     });
   }
 
   // Opportunistic rehash: raise cost for existing users without a forced reset.
   if (needsRehash(user.passwordHash)) {
     const upgraded = await hashPassword(input.password);
-    await UserModel.updateOne({ _id: user._id, passwordHash: user.passwordHash }, { $set: { passwordHash: upgraded } });
+    await UserModel.updateOne(
+      { _id: user._id, passwordHash: user.passwordHash },
+      { $set: { passwordHash: upgraded } },
+    );
   }
 
   await UserModel.updateOne(
@@ -308,6 +353,11 @@ export async function loginUser(
       },
     },
   );
+
+  // The attempt was legitimate, so give the identifier its budget back. Without
+  // this, six successful sign-ins inside the 15 minute window would lock out
+  // someone who never failed once.
+  resetRateLimit(RATE_RULES['login-per-account'], `acct:${identifier}`);
 
   if (user.status === 'pending_verification') {
     await sendVerificationEmail({
@@ -337,7 +387,10 @@ export async function loginUser(
     metadata: { username: user.username, rehash: needsRehash(user.passwordHash) },
   });
 
-  return toPublicUser({ ...user, lastLoginAt: new Date() });
+  // Assign rather than spread: `user` is a hydrated mongoose document, and
+  // spreading one copies none of its schema fields.
+  user.lastLoginAt = new Date();
+  return toPublicUser(user);
 }
 
 // ---------------------------------------------------------------------------
@@ -357,7 +410,10 @@ export async function logoutUser(
   });
 }
 
-export async function logoutEverywhere(userId: string, ctx: { ip: string | null; userAgent: string | null }): Promise<number> {
+export async function logoutEverywhere(
+  userId: string,
+  ctx: { ip: string | null; userAgent: string | null },
+): Promise<number> {
   const revoked = await revokeAllSessions(userId, 'logout-all', { bumpEpoch: true });
   await audit({
     event: 'auth.logout_all',
@@ -507,7 +563,12 @@ export async function requestPasswordReset(
     requestIp: ctx.ip,
   });
 
-  await sendPasswordResetEmail({ to: user.email, username: user.username, token, userId: String(user._id) });
+  await sendPasswordResetEmail({
+    to: user.email,
+    username: user.username,
+    token,
+    userId: String(user._id),
+  });
 
   await audit({
     event: 'auth.password_reset_requested',
@@ -543,7 +604,10 @@ export async function resetPassword(
   const user = await UserModel.findById(record.userId);
   if (!user) throw genericAuthFailure();
 
-  const policy = checkPasswordPolicy(input.password, { username: user.username, email: user.email });
+  const policy = checkPasswordPolicy(input.password, {
+    username: user.username,
+    email: user.email,
+  });
   if (!policy.ok) {
     throw new AppError('validation_failed', 'Choose a stronger password.', {
       details: { fields: { password: passwordPolicyMessage(policy.issues) } },
@@ -619,7 +683,10 @@ export async function changePassword(
     });
   }
 
-  const policy = checkPasswordPolicy(input.password, { username: user.username, email: user.email });
+  const policy = checkPasswordPolicy(input.password, {
+    username: user.username,
+    email: user.email,
+  });
   if (!policy.ok) {
     throw new AppError('validation_failed', 'Choose a stronger password.', {
       details: { fields: { password: passwordPolicyMessage(policy.issues) } },
@@ -643,7 +710,10 @@ export async function changePassword(
   );
 
   // Keep the current session alive; drop every other one.
-  await revokeAllSessions(userId, 'password-change', { exceptSessionId: ctx.sessionId, bumpEpoch: false });
+  await revokeAllSessions(userId, 'password-change', {
+    exceptSessionId: ctx.sessionId,
+    bumpEpoch: false,
+  });
 
   await audit({
     event: 'auth.password_change',
@@ -667,7 +737,9 @@ async function findUserByIdentifier(identifier: string): Promise<UserDoc | null>
   return (await UserModel.findOne(query)) as UserDoc | null;
 }
 
-async function registerFailedLogin(user: UserDoc): Promise<{ failedCount: number; locked: boolean }> {
+async function registerFailedLogin(
+  user: UserDoc,
+): Promise<{ failedCount: number; locked: boolean }> {
   const now = Date.now();
   const windowStart = user.failedLoginWindowStart?.getTime() ?? 0;
   const withinWindow = now - windowStart < LOGIN_WINDOW_MS;
@@ -699,11 +771,3 @@ function maskIdentifier(identifier: string): string {
  * Policy description for the settings screen. Derived from the shared constants
  * rather than hard-coded, so it cannot drift from what registration enforces.
  */
-export function passwordPolicySummary() {
-  return {
-    minLength: PASSWORD_POLICY.minLength,
-    maxLength: PASSWORD_POLICY.maxLength,
-    classesRequired: PASSWORD_POLICY.minClasses,
-    require: ['lowercase', 'uppercase', 'digit', 'symbol'],
-  };
-}

@@ -41,7 +41,11 @@ const PASSWORD_ALGORITHM = 2; // argon2id
  * hashing primitives remain here. Re-exported because callers already import
  * them from this path.
  */
-export { PASSWORD_POLICY, checkPasswordPolicy, passwordIssueMessage } from '@/shared/password-policy';
+export {
+  PASSWORD_POLICY,
+  checkPasswordPolicy,
+  passwordIssueMessage,
+} from '@/shared/password-policy';
 export type { PasswordIssue, PasswordPolicyResult } from '@/shared/password-policy';
 
 function pepperKey(): Buffer {

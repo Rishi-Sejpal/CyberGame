@@ -82,7 +82,12 @@ const auditLogSchema = defineSchema<AuditLogDoc>(
     ip: { type: String, default: null, maxlength: 64 },
     userAgent: { type: String, default: null, maxlength: 400 },
     metadata: { type: Object, default: {} },
-    outcome: { type: String, required: true, enum: ['success', 'failure', 'blocked'], default: 'success' },
+    outcome: {
+      type: String,
+      required: true,
+      enum: ['success', 'failure', 'blocked'],
+      default: 'success',
+    },
     prevHash: { type: String, default: null },
     hash: { type: String, required: true },
   },

@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import mongoose from 'mongoose';
 import { connectDb, disconnectDb } from '@/server/db/connect';
 import { env } from '@/server/config/env';
+import { resetAuditChainHead } from '@/server/security/audit';
 
 /**
  * Test database helpers.
@@ -38,6 +39,10 @@ export async function clearDatabase(): Promise<void> {
   await connectDb();
   const collections = await mongoose.connection.db!.collections();
   await Promise.all(collections.map((c) => c.deleteMany({})));
+  // The audit chain head is cached per process, so emptying the collection has
+  // to drop it too. Without this every test after the first one writes a chain
+  // that forks, and `verifyChain` correctly reports it.
+  resetAuditChainHead();
 }
 
 export async function teardownDatabase(): Promise<void> {

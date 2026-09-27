@@ -16,9 +16,7 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 const cspDirectives = [
   "default-src 'self'",
-  isDev
-    ? "script-src 'self' 'unsafe-eval' 'strict-dynamic'"
-    : "script-src 'self' 'strict-dynamic'",
+  isDev ? "script-src 'self' 'unsafe-eval' 'strict-dynamic'" : "script-src 'self' 'strict-dynamic'",
   // Phaser + Next hydration both need style attributes / injected <style>.
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",

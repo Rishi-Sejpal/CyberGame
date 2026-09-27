@@ -56,7 +56,13 @@ export function Button({
       disabled={disabled || loading}
       aria-disabled={disabled || loading || undefined}
       aria-busy={loading || undefined}
-      className={cn('btn', VARIANT_CLASS[variant], SIZE_CLASS[size], fullWidth && 'w-full', className)}
+      className={cn(
+        'btn',
+        VARIANT_CLASS[variant],
+        SIZE_CLASS[size],
+        fullWidth && 'w-full',
+        className,
+      )}
       {...rest}
     >
       {loading ? <Spinner className="shrink-0" /> : null}
@@ -180,10 +186,17 @@ export function Stat({
   hint?: React.ReactNode;
   tone?: 'neutral' | 'neon' | 'cyan' | 'amber';
 }) {
-  const valueTone = { neutral: 'text-ink', neon: 'text-neon', cyan: 'text-cyan', amber: 'text-amber' }[tone];
+  const valueTone = {
+    neutral: 'text-ink',
+    neon: 'text-neon',
+    cyan: 'text-cyan',
+    amber: 'text-amber',
+  }[tone];
   return (
     <div className="panel-inset px-4 py-3">
-      <p className="text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-ink-faint">{label}</p>
+      <p className="text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-ink-faint">
+        {label}
+      </p>
       <p className={cn('hud-text mt-1.5 text-xl', valueTone)}>{value}</p>
       {hint ? <p className="mt-1 text-[0.6875rem] text-ink-faint">{hint}</p> : null}
     </div>

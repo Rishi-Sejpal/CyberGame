@@ -46,7 +46,9 @@ const AUTH_PAGES = ['/login', '/register', '/forgot-password', '/reset-password'
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 function isProtected(pathname: string): boolean {
-  return PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  return PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
 }
 
 function isAuthPage(pathname: string): boolean {
@@ -68,7 +70,9 @@ export function middleware(request: NextRequest): NextResponse {
     if (rejection) return finish(rejection, request, csrfToken, shouldSetCsrf);
   }
 
-  const hasSessionCookie = Boolean(readCookie(request.headers.get('cookie'), env().SESSION_COOKIE_NAME));
+  const hasSessionCookie = Boolean(
+    readCookie(request.headers.get('cookie'), env().SESSION_COOKIE_NAME),
+  );
 
   if (isProtected(pathname) && !hasSessionCookie) {
     const url = request.nextUrl.clone();

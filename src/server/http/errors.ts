@@ -77,7 +77,8 @@ export const tooManyRequests = (retryAfterSeconds: number) =>
     headers: { 'Retry-After': String(Math.max(1, Math.ceil(retryAfterSeconds))) },
   });
 
-export const locked = (message = 'This account is temporarily locked.') => new AppError('locked', message);
+export const locked = (message = 'This account is temporarily locked.') =>
+  new AppError('locked', message);
 
 export const internal = (message = 'Something went wrong.', cause?: unknown) =>
   new AppError('internal_error', message, { expose: false, cause });

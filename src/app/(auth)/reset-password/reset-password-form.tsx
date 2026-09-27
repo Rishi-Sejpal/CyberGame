@@ -58,7 +58,10 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
             Reset links are single-use and expire after 60 minutes. Request a fresh one and open it
             from the same device.
           </Alert>
-          <Link href="/forgot-password" className="inline-block text-xs font-semibold text-neon hover:underline">
+          <Link
+            href="/forgot-password"
+            className="inline-block text-xs font-semibold text-neon hover:underline"
+          >
             Request a new link
           </Link>
         </div>
@@ -76,7 +79,12 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
             For your security, every other device has been signed out. Sign in again with the
             password you just chose.
           </Alert>
-          <Button variant="primary" size="lg" fullWidth onClick={() => router.push('/login?reset=1')}>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={() => router.push('/login?reset=1')}
+          >
             Go to sign in
           </Button>
         </div>

@@ -42,7 +42,8 @@ export function sanitizeNextPath(value: string | string[] | undefined | null): s
   const candidate = raw.trim();
   if (!candidate || candidate.length > MAX_NEXT_LENGTH) return DEFAULT_REDIRECT_AFTER_LOGIN;
   if (!candidate.startsWith('/')) return DEFAULT_REDIRECT_AFTER_LOGIN;
-  if (candidate.startsWith('//') || candidate.startsWith('/\\')) return DEFAULT_REDIRECT_AFTER_LOGIN;
+  if (candidate.startsWith('//') || candidate.startsWith('/\\'))
+    return DEFAULT_REDIRECT_AFTER_LOGIN;
   if (candidate.includes('\\') || candidate.includes('\n') || candidate.includes('\r')) {
     return DEFAULT_REDIRECT_AFTER_LOGIN;
   }
@@ -51,12 +52,4 @@ export function sanitizeNextPath(value: string | string[] | undefined | null): s
   if (hasControlCharacter(candidate)) return DEFAULT_REDIRECT_AFTER_LOGIN;
 
   return candidate;
-}
-
-/**
- * Same rules, applied to a `returnTo` stashed in `sessionStorage` by an
- * in-app navigation. Kept separate so the intent is explicit at each call site.
- */
-export function sanitizeReturnTo(value: string | null | undefined): string {
-  return sanitizeNextPath(value);
 }

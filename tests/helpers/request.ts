@@ -27,7 +27,9 @@ export function buildRequest(
   const csrfValue = 'test-csrf-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
   if (csrfMode !== 'none') {
-    cookiePairs.push(`cg_csrf=${csrfMode === 'valid' ? csrfValue : 'other-token-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'}`);
+    cookiePairs.push(
+      `cg_csrf=${csrfMode === 'valid' ? csrfValue : 'other-token-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'}`,
+    );
   }
   for (const [name, value] of Object.entries(init.cookies ?? {})) {
     cookiePairs.push(`${name}=${value}`);
@@ -42,7 +44,8 @@ export function buildRequest(
   headers.set('user-agent', 'CyberGridTest/1.0 (vitest)');
   if (init.ip) headers.set('x-real-ip', init.ip);
   if (csrfMode === 'valid') headers.set('x-csrf-token', csrfValue);
-  else if (csrfMode === 'invalid') headers.set('x-csrf-token', 'mismatched-token-cccccccccccccccccccccccccccccccc');
+  else if (csrfMode === 'invalid')
+    headers.set('x-csrf-token', 'mismatched-token-cccccccccccccccccccccccccccccccc');
 
   const hasBody = method !== 'GET' && method !== 'HEAD' && init.body !== undefined;
 

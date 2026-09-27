@@ -2,7 +2,12 @@ import 'server-only';
 
 import { connectDb } from '@/server/db/connect';
 import { SessionModel } from '@/server/db/models/session.model';
-import { UserModel, type UserDoc, type UserRole, type UserStatus } from '@/server/db/models/user.model';
+import {
+  UserModel,
+  type UserDoc,
+  type UserRole,
+  type UserStatus,
+} from '@/server/db/models/user.model';
 import { ProfileModel } from '@/server/db/models/profile.model';
 import { env, cookiesAreSecure } from '@/server/config/env';
 import { generateSecret, hashToken } from './crypto';
@@ -172,7 +177,10 @@ export async function resolveSession(jar: CookieJar): Promise<ResolvedSession | 
     if (session.expiresAt.getTime() <= now) return null;
     if (session.absoluteExpiresAt.getTime() <= now) return null;
 
-    const user = (await UserModel.findById(session.userId, userProjection).lean()) as ProjectedUser | null;
+    const user = (await UserModel.findById(
+      session.userId,
+      userProjection,
+    ).lean()) as ProjectedUser | null;
     if (!user) return null;
     if (user.status === 'banned' || user.status === 'suspended') return null;
     if (user.sessionEpoch !== session.sessionEpoch) return null;
@@ -183,7 +191,10 @@ export async function resolveSession(jar: CookieJar): Promise<ResolvedSession | 
       const nextExpiry = new Date(
         Math.min(now + ttlHours * 3_600_000, session.absoluteExpiresAt.getTime()),
       );
-      await SessionModel.updateOne({ _id: session._id, tokenHash }, { $set: { expiresAt: nextExpiry } });
+      await SessionModel.updateOne(
+        { _id: session._id, tokenHash },
+        { $set: { expiresAt: nextExpiry } },
+      );
       jar.set(sessionCookieName(), token, cookieOptions(ttlHours * 3_600));
     }
 
@@ -207,12 +218,6 @@ export async function resolveSession(jar: CookieJar): Promise<ResolvedSession | 
     });
     return null;
   }
-}
-
-/** Convenience wrapper for Server Components, which can read but not write cookies. */
-export async function resolveSessionFromRequest(request: Request): Promise<ResolvedSession | null> {
-  const { createCookieJar, cookieSourceFromHeader } = await import('./cookies');
-  return resolveSession(createCookieJar(cookieSourceFromHeader(request.headers.get('cookie'))));
 }
 
 export async function destroySessionByToken(token: string, reason = 'logout'): Promise<void> {

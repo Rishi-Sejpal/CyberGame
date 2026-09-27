@@ -42,7 +42,12 @@ const gameSaveSchema = defineSchema<GameSaveDoc>(
     sceneKey: { type: String, required: true, default: 'World', maxlength: 60 },
     x: { type: Number, required: true, default: 0 },
     y: { type: Number, required: true, default: 0 },
-    facing: { type: String, required: true, enum: ['up', 'down', 'left', 'right'], default: 'down' },
+    facing: {
+      type: String,
+      required: true,
+      enum: ['up', 'down', 'left', 'right'],
+      default: 'down',
+    },
     activeMissionId: { type: String, default: null, maxlength: 60 },
     openPanel: { type: String, default: null, maxlength: 60 },
     settings: { type: Object, default: {} },

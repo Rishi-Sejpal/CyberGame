@@ -10,10 +10,7 @@ import {
   validateUsername,
   tokenFromUrlParam,
 } from '@/shared/form-validation';
-import {
-  DEFAULT_REDIRECT_AFTER_LOGIN,
-  sanitizeNextPath,
-} from '@/lib/navigation';
+import { DEFAULT_REDIRECT_AFTER_LOGIN, sanitizeNextPath } from '@/lib/navigation';
 
 describe('open-redirect protection', () => {
   it('allows an ordinary same-origin path', () => {
@@ -161,11 +158,16 @@ describe('form rules', () => {
   it('applies personal-data rules to a reset without a known username', () => {
     // On the reset page the server knows the account; the client does not, so the
     // local check must not reject something the server would accept.
-    expect(validateReset({ password: good.password, confirmPassword: good.password }).ok).toBe(true);
+    expect(validateReset({ password: good.password, confirmPassword: good.password }).ok).toBe(
+      true,
+    );
     expect(
-      validateReset({ password: 'netrunner#2024', confirmPassword: 'netrunner#2024' }, {
-        username: 'netrunner',
-      }).errors.password,
+      validateReset(
+        { password: 'netrunner#2024', confirmPassword: 'netrunner#2024' },
+        {
+          username: 'netrunner',
+        },
+      ).errors.password,
     ).toContain('callsign');
   });
 
@@ -175,7 +177,9 @@ describe('form rules', () => {
       password: 'm7$qRv2!xLp9',
       confirmPassword: 'm7$qRv2!xLp9',
     });
-    expect(result.errors.password).toBe('Your new password must be different from the current one.');
+    expect(result.errors.password).toBe(
+      'Your new password must be different from the current one.',
+    );
   });
 
   it('requires the current password on a change', () => {

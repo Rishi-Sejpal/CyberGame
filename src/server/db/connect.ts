@@ -18,7 +18,8 @@ import { env, mongodbUri } from '@/server/config/env';
  */
 
 declare global {
-  var __cybergridMongoose: { conn: typeof mongoose | null; promise: Promise<typeof mongoose> | null } | undefined;
+  var __cybergridMongoose:
+    { conn: typeof mongoose | null; promise: Promise<typeof mongoose> | null } | undefined;
 }
 
 const globalCache = (globalThis as typeof globalThis).__cybergridMongoose ?? {

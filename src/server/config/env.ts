@@ -52,14 +52,30 @@ const rawSchema = z
     SESSION_SECRET: secretString('SESSION_SECRET'),
     PASSWORD_PEPPER: secretString('PASSWORD_PEPPER'),
 
-    ARGON2_MEMORY_COST: z.coerce.number().int().min(8 * 1024).max(1024 * 1024).default(19_456),
+    ARGON2_MEMORY_COST: z.coerce
+      .number()
+      .int()
+      .min(8 * 1024)
+      .max(1024 * 1024)
+      .default(19_456),
     ARGON2_TIME_COST: z.coerce.number().int().min(1).max(10).default(2),
     ARGON2_PARALLELISM: z.coerce.number().int().min(1).max(16).default(1),
 
-    SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(24 * 30).default(24 * 7),
+    SESSION_TTL_HOURS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(24 * 30)
+      .default(24 * 7),
     SESSION_ABSOLUTE_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
-    SESSION_COOKIE_NAME: z.string().regex(/^[A-Za-z0-9_-]+$/).default('cg_session'),
-    CSRF_COOKIE_NAME: z.string().regex(/^[A-Za-z0-9_-]+$/).default('cg_csrf'),
+    SESSION_COOKIE_NAME: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]+$/)
+      .default('cg_session'),
+    CSRF_COOKIE_NAME: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]+$/)
+      .default('cg_csrf'),
 
     EMAIL_TRANSPORT: z.enum(['outbox', 'smtp', 'console']).default('outbox'),
     SMTP_URL: z.string().optional(),

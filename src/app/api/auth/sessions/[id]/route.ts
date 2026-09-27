@@ -1,5 +1,9 @@
 import { withApi, ok } from '@/server/http/api';
-import { destroyCurrentSession, revokeSessionById, sessionCookieName } from '@/server/security/session';
+import {
+  destroyCurrentSession,
+  revokeSessionById,
+  sessionCookieName,
+} from '@/server/security/session';
 import { RATE_RULES } from '@/server/security/rate-limit';
 import { parseOrThrow } from '@/server/http/errors';
 import { objectIdSchema } from '@/server/validation/schemas';

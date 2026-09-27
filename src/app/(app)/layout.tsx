@@ -9,7 +9,13 @@ import { csrfCookieName } from '@/server/security/csrf';
 import { AuthProvider } from '@/components/auth/auth-provider';
 import { AppShell } from '@/components/app/app-shell';
 import { toPublicUser } from '@/server/auth/service';
-import { asTierId, normalizeStats, toIso, type AccountView, type ProfileView } from '@/shared/account';
+import {
+  asTierId,
+  normalizeStats,
+  toIso,
+  type AccountView,
+  type ProfileView,
+} from '@/shared/account';
 
 /**
  * Rendered per request, never prerendered.
@@ -81,7 +87,8 @@ export async function loadShellData(): Promise<{
   // A profile is created at registration, but a row could predate the profile
   // collection. Self-heal rather than rendering a shell that throws on
   // `profile.level` forever.
-  const profile = existingProfile ?? (await ensureProfile(session.user.id, session.user.displayName));
+  const profile =
+    existingProfile ?? (await ensureProfile(session.user.id, session.user.displayName));
 
   const view: AccountView = row
     ? toPublicUser(row)

@@ -12,14 +12,14 @@ matters.**
 
 ## 1. Passwords
 
-| Property | Implementation |
-| --- | --- |
-| Hash | Argon2id only, `argon2i` is never used |
-| Cost | `ARGON2_MEMORY_COST` / `TIME_COST` / `PARALLELISM` in `src/server/config/env.ts` |
-| Salt | Per-password, from the CSPRNG |
-| Pepper | `PASSWORD_PEPPER`, mixed into the hash input, **never stored** |
-| Comparison | Constant-time, via `timingSafeEqual` |
-| Policy | `src/shared/password-policy.ts`, shared by the form and the API |
+| Property   | Implementation                                                                   |
+| ---------- | -------------------------------------------------------------------------------- |
+| Hash       | Argon2id only, `argon2i` is never used                                           |
+| Cost       | `ARGON2_MEMORY_COST` / `TIME_COST` / `PARALLELISM` in `src/server/config/env.ts` |
+| Salt       | Per-password, from the CSPRNG                                                    |
+| Pepper     | `PASSWORD_PEPPER`, mixed into the hash input, **never stored**                   |
+| Comparison | Constant-time, via `timingSafeEqual`                                             |
+| Policy     | `src/shared/password-policy.ts`, shared by the form and the API                  |
 
 Two things are deliberate and worth preserving:
 
@@ -108,6 +108,14 @@ Set in `next.config.ts`:
   account, then address, then a global bucket.
 - Failed logins are counted per account; the account locks and the response is
   identical to a wrong password, so the lock is not a username oracle.
+- Login carries two independent limits. The in-memory per-identifier bucket is
+  charged on every attempt, including against identifiers that do not exist —
+  those have no failure counter to lock, so the bucket is the only control there.
+  It is cleared by a successful sign-in, and its limit sits above
+  `MAX_FAILED_LOGINS` on purpose: the in-memory store is per process, so on more
+  than one instance the persistent `lockedUntil` record is the stronger control
+  and must be the one that fires. The per-IP rule is the binding limit for a
+  single host either way.
 - Verification and reset tokens are single-use, expire, and are stored hashed.
   Verification is submitted by POST from our own page, so a mail-scanner that
   follows links cannot consume the token before the user does.
@@ -118,8 +126,23 @@ Set in `next.config.ts`:
 
 Security-relevant actions append to a hash-chained log
 (`src/server/security/audit.ts`): sign-in, sign-out, revocation, password change,
-password reset, email verification, and every rate-limit rejection. The chain
-makes a deleted entry detectable.
+password reset, email verification, and every rate-limit rejection.
+
+Each entry stores the SHA-256 of the previous entry's hash, so editing, deleting
+or reordering a row breaks every link after it. `verifyChain()` recomputes the
+chain and reports the first broken hash; `tests/audit-chain.test.ts` covers a
+healthy chain, an edited field, a deleted row, and the case an attacker cannot
+fix by recomputing only their own row.
+
+Two honest limits:
+
+- The chain head is cached in-process for two seconds, so two app instances
+  writing at the same moment can fork the chain. `verifyChain()` reports the fork
+  rather than hiding it. Anything that empties or rotates the collection has to
+  call `resetAuditChainHead()`, or the next write links to a hash that is no
+  longer the head.
+- A failed write is swallowed, because losing an audit row must not fail the
+  action being logged. The console error is the only signal.
 
 ---
 

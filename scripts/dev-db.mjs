@@ -104,7 +104,7 @@ async function start({ background }) {
 
   if (await portInUse(PORT)) {
     console.error(`Port ${PORT} is already in use.`);
-    console.error('  • If that is this project\'s mongod, run `npm run db:stop` first.');
+    console.error("  • If that is this project's mongod, run `npm run db:stop` first.");
     console.error('  • If it is something else, point MONGODB_URI at that port instead.');
     process.exit(1);
   }
@@ -177,12 +177,15 @@ async function stop() {
 async function status() {
   const up = await portInUse(PORT);
   const pid = readPid();
-  console.log(`mongod on ${HOST}:${PORT}: ${up ? 'running' : 'not running'}${pid ? ` (pid ${pid})` : ''}`);
+  console.log(
+    `mongod on ${HOST}:${PORT}: ${up ? 'running' : 'not running'}${pid ? ` (pid ${pid})` : ''}`,
+  );
   if (!up) process.exitCode = 1;
 }
 
 const command = process.argv[2] ?? 'start';
-if (command === 'start') await start({ background: process.argv.includes('--bg') || process.env.CG_DB_BG === '1' });
+if (command === 'start')
+  await start({ background: process.argv.includes('--bg') || process.env.CG_DB_BG === '1' });
 else if (command === 'stop') await stop();
 else if (command === 'status') await status();
 else {

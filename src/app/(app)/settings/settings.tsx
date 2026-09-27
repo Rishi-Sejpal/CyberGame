@@ -7,11 +7,7 @@ import { Field, PasswordField } from '@/components/ui/form';
 import { ApiRequestError, errorMessage } from '@/lib/api-client';
 import { authApi, useAuth } from '@/components/auth/auth-provider';
 import { PASSWORD_POLICY } from '@/shared/password-policy';
-import {
-  validateChangePassword,
-  validateProfile,
-  type FormErrors,
-} from '@/shared/form-validation';
+import { validateChangePassword, validateProfile, type FormErrors } from '@/shared/form-validation';
 import { useCooldown } from '@/lib/use-cooldown';
 import { formatRelativeTime } from '@/lib/utils';
 import type { AccountView, ProfileView, SessionInfoView } from '@/shared/account';
@@ -139,7 +135,9 @@ function PasswordPanel({ user }: { user: AccountView }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<FormErrors>({});
-  const [banner, setBanner] = useState<{ tone: 'success' | 'error' | 'info'; text: string } | null>(null);
+  const [banner, setBanner] = useState<{ tone: 'success' | 'error' | 'info'; text: string } | null>(
+    null,
+  );
   const [pending, setPending] = useState(false);
 
   const validation = validateChangePassword(
@@ -272,7 +270,9 @@ function SessionsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [revokingAll, setRevokingAll] = useState(false);
-  const [banner, setBanner] = useState<{ tone: 'success' | 'error' | 'info'; text: string } | null>(null);
+  const [banner, setBanner] = useState<{ tone: 'success' | 'error' | 'info'; text: string } | null>(
+    null,
+  );
   const router = useRouter();
 
   // Loaded on mount rather than server-rendered: the list changes on every
@@ -388,8 +388,9 @@ function SessionsPanel() {
                     {session.current ? <span className="chip text-neon">this device</span> : null}
                   </p>
                   <p className="hud-text mt-1 truncate text-[0.6875rem] text-ink-faint">
-                    {session.ip ?? 'unknown address'} · last seen {formatRelativeTime(session.lastSeenAt)} ·
-                    expires {formatRelativeTime(session.expiresAt)}
+                    {session.ip ?? 'unknown address'} · last seen{' '}
+                    {formatRelativeTime(session.lastSeenAt)} · expires{' '}
+                    {formatRelativeTime(session.expiresAt)}
                   </p>
                 </div>
                 <Button
@@ -419,10 +420,7 @@ function DangerZonePanel() {
 
   return (
     <Panel>
-      <PanelHeader
-        title="Danger zone"
-        description="Actions that end access across every device."
-      />
+      <PanelHeader title="Danger zone" description="Actions that end access across every device." />
       <div className="space-y-3 px-5 py-4">
         <label className="flex items-start gap-2.5 text-xs text-ink-dim">
           <input

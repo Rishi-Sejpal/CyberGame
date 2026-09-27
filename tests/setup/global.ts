@@ -25,7 +25,11 @@ export default async function setup(): Promise<() => Promise<void>> {
   // Prefer a system mongod (no download, works offline). Fall back to whatever
   // mongodb-memory-server can provision itself.
   if (!process.env.MONGOMS_SYSTEM_BINARY) {
-    for (const candidate of ['/usr/bin/mongod', '/usr/local/bin/mongod', '/opt/homebrew/bin/mongod']) {
+    for (const candidate of [
+      '/usr/bin/mongod',
+      '/usr/local/bin/mongod',
+      '/opt/homebrew/bin/mongod',
+    ]) {
       if (existsSync(candidate)) {
         process.env.MONGOMS_SYSTEM_BINARY = candidate;
         break;

@@ -4,8 +4,12 @@ import { env } from '@/server/config/env';
 import { hashPassword, verifyPassword, checkPasswordPolicy } from '@/server/security/password';
 
 describe('foundation smoke', () => {
-  beforeAll(async () => { await useTestDatabase(); });
-  afterAll(async () => { await teardownDatabase(); });
+  beforeAll(async () => {
+    await useTestDatabase();
+  });
+  afterAll(async () => {
+    await teardownDatabase();
+  });
 
   it('boots with a valid environment', () => {
     expect(env().NODE_ENV).toBe('test');

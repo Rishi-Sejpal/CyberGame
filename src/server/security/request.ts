@@ -63,20 +63,28 @@ export function userAgent(request: NextRequest | Request): string {
 /** Short, human-recognisable device label for the "your sessions" screen. */
 export function deviceLabel(request: NextRequest | Request): string {
   const ua = userAgent(request);
-  const browser =
-    /edg\//i.test(ua) ? 'Edge'
-    : /opr\/|opera/i.test(ua) ? 'Opera'
-    : /chrome|crios/i.test(ua) ? 'Chrome'
-    : /firefox|fxios/i.test(ua) ? 'Firefox'
-    : /safari/i.test(ua) ? 'Safari'
-    : 'Browser';
-  const os =
-    /windows/i.test(ua) ? 'Windows'
-    : /mac os|macintosh/i.test(ua) ? 'macOS'
-    : /android/i.test(ua) ? 'Android'
-    : /iphone|ipad|ios/i.test(ua) ? 'iOS'
-    : /linux/i.test(ua) ? 'Linux'
-    : 'Unknown OS';
+  const browser = /edg\//i.test(ua)
+    ? 'Edge'
+    : /opr\/|opera/i.test(ua)
+      ? 'Opera'
+      : /chrome|crios/i.test(ua)
+        ? 'Chrome'
+        : /firefox|fxios/i.test(ua)
+          ? 'Firefox'
+          : /safari/i.test(ua)
+            ? 'Safari'
+            : 'Browser';
+  const os = /windows/i.test(ua)
+    ? 'Windows'
+    : /mac os|macintosh/i.test(ua)
+      ? 'macOS'
+      : /android/i.test(ua)
+        ? 'Android'
+        : /iphone|ipad|ios/i.test(ua)
+          ? 'iOS'
+          : /linux/i.test(ua)
+            ? 'Linux'
+            : 'Unknown OS';
   return `${browser} on ${os}`;
 }
 

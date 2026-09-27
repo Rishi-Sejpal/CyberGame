@@ -18,10 +18,7 @@ export const GET = withApi(
       throw forbidden('The mail preview is disabled.');
     }
     await connectDb();
-    const messages = await EmailOutboxModel.find({})
-      .sort({ createdAt: -1 })
-      .limit(25)
-      .lean();
+    const messages = await EmailOutboxModel.find({}).sort({ createdAt: -1 }).limit(25).lean();
     return ok({
       messages: messages.map((m) => ({
         id: String(m._id),

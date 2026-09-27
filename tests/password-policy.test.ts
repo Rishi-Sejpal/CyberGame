@@ -51,7 +51,13 @@ describe('password policy', () => {
   it('rejects a common credential carrying a suffix, a prefix or a leet swap', () => {
     // These are the strings an attacker tries before anything in this app is
     // interesting. A list checked with exact equality misses every one of them.
-    for (const candidate of ['Password123!', 'PASSWORD123!', 'mypassword1', 'p@ssw0rd!', 'Pa55w0rd!']) {
+    for (const candidate of [
+      'Password123!',
+      'PASSWORD123!',
+      'mypassword1',
+      'p@ssw0rd!',
+      'Pa55w0rd!',
+    ]) {
       expect(checkPasswordPolicy(candidate).issues).toContain('too_common');
     }
   });
@@ -63,12 +69,12 @@ describe('password policy', () => {
   });
 
   it('blocks the personal-data guesses', () => {
-    expect(
-      checkPasswordPolicy('Netrunner#2024x', { username: 'netrunner' }).issues,
-    ).toContain('contains_username');
-    expect(
-      checkPasswordPolicy('Alice#secure99', { email: 'alice@example.com' }).issues,
-    ).toContain('contains_email');
+    expect(checkPasswordPolicy('Netrunner#2024x', { username: 'netrunner' }).issues).toContain(
+      'contains_username',
+    );
+    expect(checkPasswordPolicy('Alice#secure99', { email: 'alice@example.com' }).issues).toContain(
+      'contains_email',
+    );
   });
 
   it('only applies the personal-data rules at 3+ characters', () => {
@@ -172,7 +178,13 @@ describe('strength meter', () => {
       expect(strengthColor(label)).toMatch(/^bg-/);
     }
     // Distinct colours, so the bar is not readable by tone alone as one colour.
-    const graded: Exclude<StrengthLabel, 'empty'>[] = ['very-weak', 'weak', 'fair', 'good', 'strong'];
+    const graded: Exclude<StrengthLabel, 'empty'>[] = [
+      'very-weak',
+      'weak',
+      'fair',
+      'good',
+      'strong',
+    ];
     expect(new Set(graded.map(strengthColor)).size).toBe(graded.length);
   });
 });
@@ -185,7 +197,18 @@ describe('identity rules', () => {
   });
 
   it('rejects malformed callsigns', () => {
-    for (const value of ['ab', 'a'.repeat(21), '_abc', 'abc_', '-abc', 'abc-', 'Abc', 'a b', 'a.b', 'a@b']) {
+    for (const value of [
+      'ab',
+      'a'.repeat(21),
+      '_abc',
+      'abc_',
+      '-abc',
+      'abc-',
+      'Abc',
+      'a b',
+      'a.b',
+      'a@b',
+    ]) {
       expect(USERNAME_RE.test(value)).toBe(false);
     }
   });

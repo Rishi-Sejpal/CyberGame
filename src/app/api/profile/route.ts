@@ -76,7 +76,11 @@ export const PATCH = withApi(
 
     const [user, profile] = await Promise.all([
       body.displayName
-        ? UserModel.findByIdAndUpdate(ctx.session!.id, { $set: { displayName: body.displayName } }, { returnDocument: 'after' }).lean()
+        ? UserModel.findByIdAndUpdate(
+            ctx.session!.id,
+            { $set: { displayName: body.displayName } },
+            { returnDocument: 'after' },
+          ).lean()
         : UserModel.findById(ctx.session!.id).lean(),
       Boolean(body.displayName)
         ? ProfileModel.findOneAndUpdate(

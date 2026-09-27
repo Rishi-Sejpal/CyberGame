@@ -86,7 +86,9 @@ export function AuthProvider({
         user: data.user,
         // Defensive: the API could one day omit a stat, and a component reading
         // `profile.stats.packetsInspected` should not have to guard for that.
-        profile: data.profile ? { ...data.profile, stats: normalizeStats(data.profile.stats) } : null,
+        profile: data.profile
+          ? { ...data.profile, stats: normalizeStats(data.profile.stats) }
+          : null,
         loading: false,
         error: null,
       });
@@ -138,8 +140,12 @@ export function AuthProvider({
 
 /** Typed endpoints used by the auth forms. Thin on purpose — no state here. */
 export const authApi = {
-  register: (body: { username: string; email: string; password: string; confirmPassword: string }) =>
-    apiFetch<{ user: PublicUser }>('/api/auth/register', { method: 'POST', body }),
+  register: (body: {
+    username: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+  }) => apiFetch<{ user: PublicUser }>('/api/auth/register', { method: 'POST', body }),
 
   login: (body: { identifier: string; password: string }) =>
     apiFetch<{ user: PublicUser }>('/api/auth/login', { method: 'POST', body }),
@@ -166,11 +172,15 @@ export const authApi = {
   listSessions: () => apiFetch<{ sessions: SessionInfo[] }>('/api/auth/sessions'),
 
   revokeSession: (id: string) =>
-    apiFetch<{ revoked: boolean; current: boolean }>(`/api/auth/sessions/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    }),
+    apiFetch<{ revoked: boolean; current: boolean }>(
+      `/api/auth/sessions/${encodeURIComponent(id)}`,
+      {
+        method: 'DELETE',
+      },
+    ),
 
-  profile: () => apiFetch<{ user: PublicUser | null; profile: PublicProfile | null }>('/api/profile'),
+  profile: () =>
+    apiFetch<{ user: PublicUser | null; profile: PublicProfile | null }>('/api/profile'),
 
   updateProfile: (body: { displayName?: string; avatarId?: string }) =>
     apiFetch<{ updated: boolean }>('/api/profile', { method: 'PATCH', body }),

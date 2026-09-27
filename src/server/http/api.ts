@@ -5,7 +5,11 @@ import { ZodError } from 'zod';
 import { randomUUID } from 'node:crypto';
 import { AppError, fieldErrorsFromZod, isAppError, type ErrorCode } from './errors';
 import { verifyCsrf, logCsrfRejection } from '@/server/security/csrf';
-import { checkRateLimit, type RateLimitRule, type RateLimitDecision } from '@/server/security/rate-limit';
+import {
+  checkRateLimit,
+  type RateLimitRule,
+  type RateLimitDecision,
+} from '@/server/security/rate-limit';
 import { clientIp, deviceLabel, ipIdentity, userAgent } from '@/server/security/request';
 import { resolveSession, type SessionUser } from '@/server/security/session';
 import { createCookieJar, cookieSourceFromHeader, type CookieJar } from '@/server/security/cookies';
@@ -77,7 +81,12 @@ export function withApi<S = SessionUser>(handler: ApiHandler<S>, options: ApiOpt
         if (!csrf.ok) {
           if (csrf.reason) logCsrfRejection(request, csrf.reason);
           return withCookies(
-            fail({ status: 403, code: 'csrf_rejected', message: csrfMessage(csrf.reason), requestId }),
+            fail({
+              status: 403,
+              code: 'csrf_rejected',
+              message: csrfMessage(csrf.reason),
+              requestId,
+            }),
             cookies,
           );
         }
@@ -218,7 +227,10 @@ function fail(input: {
         ...(input.details ? { details: input.details } : {}),
       },
     },
-    { status: input.status, headers: { 'X-Request-Id': input.requestId, ...(input.headers ?? {}) } },
+    {
+      status: input.status,
+      headers: { 'X-Request-Id': input.requestId, ...(input.headers ?? {}) },
+    },
   );
 }
 

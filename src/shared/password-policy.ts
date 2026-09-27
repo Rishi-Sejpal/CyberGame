@@ -76,14 +76,12 @@ const LEET: Readonly<Record<string, string>> = {
   '5': 's',
   '7': 't',
   '@': 'a',
-  '$': 's',
+  $: 's',
   '!': 'i',
 };
 
 function foldLeet(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[013457@$!]/g, (char) => LEET[char] ?? char);
+  return value.toLowerCase().replace(/[013457@$!]/g, (char) => LEET[char] ?? char);
 }
 
 /** Common credentials folded the same way, so both sides of the comparison match. */
@@ -318,12 +316,24 @@ export function scorePassword(
       break;
     }
   }
-  if (issues.includes('too_common') || issues.includes('contains_username') || issues.includes('contains_email')) {
+  if (
+    issues.includes('too_common') ||
+    issues.includes('contains_username') ||
+    issues.includes('contains_email')
+  ) {
     score = 0;
   }
 
   const label: StrengthLabel =
-    score <= 0 ? 'very-weak' : score === 1 ? 'weak' : score === 2 ? 'fair' : score === 3 ? 'good' : 'strong';
+    score <= 0
+      ? 'very-weak'
+      : score === 1
+        ? 'weak'
+        : score === 2
+          ? 'fair'
+          : score === 3
+            ? 'good'
+            : 'strong';
 
   return {
     score: score as 0 | 1 | 2 | 3 | 4,

@@ -1,0 +1,89 @@
+name: CI
+
+# The gate is `npm run verify` (lint, typecheck, tests, formatting) plus a
+# production build. It runs on every push and pull request so `verify` is a claim
+# the repository checks rather than one it merely documents.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # The suite boots its own throwaway instance, but it deliberately uses a
+      # system mongod rather than downloading one, so the binary has to exist.
+      - name: Install MongoDB
+        run: |
+          curl -fsSL https://pgp.mongodb.com/server-8.0.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
+          echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" \
+            | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+          sudo apt-get update
+          sudo apt-get install -y mongodb-org-server
+          mongod --version | head -1
+
+      - run: npm ci
+
+      # Test values are deliberately weak-but-valid: the suite asserts on the
+      # cheap Argon2 path, and a strong pepper here would make the run minutes
+      # slower for no extra coverage.
+      - name: Lint, typecheck, test, formatting
+        run: npm run verify
+        env:
+          NODE_ENV: test
+          APP_URL: http://localhost:3000
+          ALLOWED_ORIGINS: http://localhost:3000
+          SESSION_SECRET: ci-session-secret-2f8b4d6a1c9e0735b8d2f4a6c1e09375
+          PASSWORD_PEPPER: ci-pepper-9a1c3e5b7d9f2046c8a2e1b3d5f7094
+          MONGODB_URI: mongodb://127.0.0.1:27019/cybergrid_test
+          TEST_MONGODB_URI: mongodb://127.0.0.1:27019/cybergrid_test
+          EMAIL_TRANSPORT: outbox
+          EMAIL_FROM: CYBERGRID CI <no-reply@cybergrid.test>
+          DEV_MAIL_PREVIEW: 'false'
+          AUTH_TEST_FAST_HASH: 'true'
+          TRUST_PROXY: '0'
+
+      # No `.env.local` in CI, so the build has to work from the environment
+      # alone. These are the values the configuration validator insists on for a
+      # production build: https origin, and secrets long enough to pass.
+      - name: Production build
+        run: npm run build
+        env:
+          NODE_ENV: production
+          APP_URL: https://cybergrid.example
+          ALLOWED_ORIGINS: https://cybergrid.example
+          SESSION_SECRET: ci-build-session-secret-4c7a1e9b2d6f8035a1c4e7b9d2f603188a5c2e7b4d9f0316a8c5e2b7d4f9a1c60
+          PASSWORD_PEPPER: ci-build-pepper-8e2b4d6a0c1f3957b8d2a4c6e0f1937d5b8a2c6e0f1937d5b8a2c6e0f1937
+          MONGODB_URI: mongodb://127.0.0.1:27019/cybergrid_build
+          EMAIL_TRANSPORT: outbox
+          EMAIL_FROM: CYBERGRID CI <no-reply@cybergrid.test>
+          DEV_MAIL_PREVIEW: 'false'
+          AUTH_TEST_FAST_HASH: 'false'
+          TRUST_PROXY: '0'
+
+      - name: Build produced no committed-file changes
+        run: git diff --exit-code
+
+      - name: Confirm the build was not silently skipped
+        run: |
+          test -f .next/BUILD_ID
+          echo "build id $(cat .next/BUILD_ID)"

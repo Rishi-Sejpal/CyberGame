@@ -131,11 +131,9 @@ export class MemoryRateLimitStore implements RateLimitStore {
 
 const globalKey = '__cybergridRateLimit';
 const globalStore = (globalThis as Record<string, unknown>)[globalKey] as
-  | MemoryRateLimitStore
-  | undefined;
+  MemoryRateLimitStore | undefined;
 const store: RateLimitStore =
-  globalStore ??
-  ((globalThis as Record<string, unknown>)[globalKey] = new MemoryRateLimitStore());
+  globalStore ?? ((globalThis as Record<string, unknown>)[globalKey] = new MemoryRateLimitStore());
 
 export function rateLimitStore(): RateLimitStore {
   return store;
@@ -151,18 +149,30 @@ const HOUR = 60 * MINUTE;
 export const RATE_RULES = {
   register: { name: 'auth.register', limit: 5, windowMs: HOUR, burst: 2 },
   login: { name: 'auth.login', limit: 10, windowMs: 15 * MINUTE, burst: 5 },
-  'login-per-account': { name: 'auth.login.account', limit: 5, windowMs: 15 * MINUTE },
+  /**
+   * Charged on every attempt against one identifier, known or not, and cleared
+   * by a successful sign-in.
+   *
+   * The limit must stay *above* `MAX_FAILED_LOGINS` (8) in the auth service. The
+   * in-memory store is per process, so on more than one instance it is the
+   * weaker control; the persistent `lockedUntil` record is the one that survives
+   * a restart and is shared across instances. If this rule tripped first it
+   * would shadow that lock and turn every account lockout into a 429, leaving
+   * `lockedUntil` unreachable. The per-IP `auth.login` rule above remains the
+   * binding limit for a single host, so raising this does not widen that path.
+   */
+  'login-per-account': { name: 'auth.login.account', limit: 12, windowMs: 15 * MINUTE },
   logout: { name: 'auth.logout', limit: 30, windowMs: MINUTE },
   'verify-email': { name: 'auth.verify', limit: 10, windowMs: HOUR },
   'resend-verification': { name: 'auth.resend', limit: 3, windowMs: HOUR },
   'forgot-password': { name: 'auth.forgot', limit: 3, windowMs: HOUR, burst: 1 },
   'reset-password': { name: 'auth.reset', limit: 10, windowMs: HOUR },
   'change-password': { name: 'auth.change-password', limit: 6, windowMs: HOUR },
-  'me': { name: 'api.me', limit: 240, windowMs: MINUTE },
+  me: { name: 'api.me', limit: 240, windowMs: MINUTE },
   'game-save': { name: 'game.save', limit: 90, windowMs: MINUTE },
   'mission-attempt': { name: 'game.attempt', limit: 40, windowMs: MINUTE },
   'mission-start': { name: 'game.start', limit: 30, windowMs: MINUTE },
-  'catalog': { name: 'api.catalog', limit: 300, windowMs: MINUTE },
+  catalog: { name: 'api.catalog', limit: 300, windowMs: MINUTE },
   admin: { name: 'api.admin', limit: 120, windowMs: MINUTE },
 } as const satisfies Record<string, RateLimitRule>;
 
@@ -170,14 +180,6 @@ export type RateRuleName = keyof typeof RATE_RULES;
 
 export function checkRateLimit(rule: RateLimitRule, identity: string): RateLimitDecision {
   return store.hit(`${rule.name}:${identity}`, rule, Date.now());
-}
-
-export function consumeRateLimit(
-  rule: RateLimitRule,
-  identity: string,
-): { ok: true; decision: RateLimitDecision } | { ok: false; decision: RateLimitDecision } {
-  const decision = checkRateLimit(rule, identity);
-  return decision.allowed ? { ok: true, decision } : { ok: false, decision };
 }
 
 export function resetRateLimit(rule: RateLimitRule, identity: string): void {

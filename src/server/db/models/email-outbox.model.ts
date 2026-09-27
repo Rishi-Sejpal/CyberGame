@@ -59,7 +59,4 @@ const emailOutboxSchema = defineSchema<EmailOutboxDoc>(
 emailOutboxSchema.index({ createdAt: -1 });
 emailOutboxSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 3 });
 
-export const EmailOutboxModel = registerModel<EmailOutboxDoc>(
-  'EmailOutbox',
-  emailOutboxSchema,
-);
+export const EmailOutboxModel = registerModel<EmailOutboxDoc>('EmailOutbox', emailOutboxSchema);

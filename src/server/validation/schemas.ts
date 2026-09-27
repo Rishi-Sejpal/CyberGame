@@ -74,14 +74,16 @@ export const loginSchema = z
   .object({
     // Accepts a username *or* an email in one field so the client does not have
     // to guess which one the user typed. Resolution happens server-side.
-    identifier: z.string({ error: 'Enter your username or email.' }).trim().min(1, 'Enter your username or email.').max(254),
+    identifier: z
+      .string({ error: 'Enter your username or email.' })
+      .trim()
+      .min(1, 'Enter your username or email.')
+      .max(254),
     password: z.string({ error: 'Enter your password.' }).min(1, 'Enter your password.').max(200),
   })
   .strict();
 
-export const forgotPasswordSchema = z
-  .object({ email: emailSchema })
-  .strict();
+export const forgotPasswordSchema = z.object({ email: emailSchema }).strict();
 
 export const resetPasswordSchema = z
   .object({
@@ -99,9 +101,7 @@ export const verifyEmailSchema = z
   .object({ token: z.string({ error: 'Verification token is required.' }).trim().min(20).max(200) })
   .strict();
 
-export const resendVerificationSchema = z
-  .object({})
-  .strict();
+export const resendVerificationSchema = z.object({}).strict();
 
 export const changePasswordSchema = z
   .object({
@@ -122,7 +122,11 @@ export const changePasswordSchema = z
 export const updateProfileSchema = z
   .object({
     displayName: z.string().trim().min(1, 'Display name is required.').max(32).optional(),
-    avatarId: z.string().trim().regex(/^[a-z0-9-]{1,40}$/i, 'Invalid avatar.').optional(),
+    avatarId: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9-]{1,40}$/i, 'Invalid avatar.')
+      .optional(),
     /** UI preferences only. Never accepted as progression. */
     settings: z
       .record(z.string().max(40), z.union([z.boolean(), z.number().finite(), z.string().max(200)]))
@@ -142,10 +146,7 @@ const OBJECT_ID_RE = /^[a-f\d]{24}$/i;
  * reaches Mongo matters: an unvalidated id lets a caller probe collection
  * contents with `$`-prefixed or regex payloads.
  */
-export const objectIdSchema = z
-  .string()
-  .trim()
-  .regex(OBJECT_ID_RE, 'Invalid identifier.');
+export const objectIdSchema = z.string().trim().regex(OBJECT_ID_RE, 'Invalid identifier.');
 
 export const objectIdParamsSchema = z.object({ id: objectIdSchema });
 
@@ -155,8 +156,14 @@ export const objectIdParamsSchema = z.object({ id: objectIdSchema });
 
 export const gameSaveSchema = z
   .object({
-    worldId: z.string().trim().regex(/^[a-z0-9-]{1,40}$/i, 'Invalid world.'),
-    sceneKey: z.string().trim().regex(/^[A-Za-z0-9_]{1,60}$/, 'Invalid scene.'),
+    worldId: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9-]{1,40}$/i, 'Invalid world.'),
+    sceneKey: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z0-9_]{1,60}$/, 'Invalid scene.'),
     x: z.number().finite().min(-4096).max(4096),
     y: z.number().finite().min(-4096).max(4096),
     facing: z.enum(['up', 'down', 'left', 'right']),
@@ -178,19 +185,21 @@ export const attemptSchema = z
     attemptId: z.string().trim().min(8).max(64),
     kind: z.string().trim().min(2).max(40),
     /** Free-form answers, shape-validated per challenge kind on the server. */
-    answers: z.record(z.string().max(48), z.unknown()).refine(
-      (v) => Object.keys(v).length <= 64,
-      'Too many answer fields.',
-    ),
+    answers: z
+      .record(z.string().max(48), z.unknown())
+      .refine((v) => Object.keys(v).length <= 64, 'Too many answer fields.'),
     /** Optional hint request — costs a hint token, never a reset. */
     requestHint: z.boolean().optional(),
-    elapsedMs: z.number().int().min(0).max(24 * 3_600_000).optional(),
+    elapsedMs: z
+      .number()
+      .int()
+      .min(0)
+      .max(24 * 3_600_000)
+      .optional(),
   })
   .strict();
 
-export const hintSchema = z
-  .object({ challengeId: z.string().trim().min(3).max(60) })
-  .strict();
+export const hintSchema = z.object({ challengeId: z.string().trim().min(3).max(60) }).strict();
 
 export const leaderboardQuerySchema = z
   .object({

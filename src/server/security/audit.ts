@@ -1,7 +1,11 @@
 import 'server-only';
 
 import { createHash } from 'node:crypto';
-import { AuditLogModel, type AuditEvent, type AuditSeverity } from '@/server/db/models/audit-log.model';
+import {
+  AuditLogModel,
+  type AuditEvent,
+  type AuditSeverity,
+} from '@/server/db/models/audit-log.model';
 import { connectDb } from '@/server/db/connect';
 
 /**
@@ -74,15 +78,38 @@ function sanitizeMetadata(metadata: Record<string, unknown> | undefined): Record
   return out;
 }
 
-function canonical(input: Omit<AuditInput, 'severity'> & { severity: AuditSeverity }): string {
+/**
+ * The exact bytes that get hashed, in a fixed order.
+ *
+ * `createdAt` is passed in rather than read from the clock here: it has to be the
+ * same value that ends up stored on the row, or `verifyChain` — which recomputes
+ * from the stored timestamp — can never reproduce a healthy entry's hash and
+ * reports an untouched log as tampered.
+ */
+function canonical(
+  input: Omit<AuditInput, 'severity'> & { severity: AuditSeverity },
+  createdAt: Date,
+): string {
   return JSON.stringify([
     input.event,
     input.severity,
     input.userId ?? null,
     input.actor ?? 'anonymous',
     input.outcome ?? 'success',
-    new Date().toISOString(),
+    createdAt.toISOString(),
   ]);
+}
+
+/**
+ * Drop the cached chain head.
+ *
+ * The cache assumes the process owns the tail of the log. Anything that empties or
+ * replaces the collection behind it — a test truncating the database, an operator
+ * rotating the log — must call this, or the next write links to a hash that is no
+ * longer the head and the chain forks for good.
+ */
+export function resetAuditChainHead(): void {
+  chainHead = null;
 }
 
 async function currentHead(): Promise<string> {
@@ -107,10 +134,11 @@ export async function audit(input: AuditInput): Promise<void> {
         metadata: sanitizeMetadata(input.metadata),
       };
       const prevHash = await currentHead();
+      const createdAt = new Date();
       const hash = createHash('sha256')
-        .update(`${prevHash}\u0000${canonical(enriched)}`)
+        .update(`${prevHash}\u0000${canonical(enriched, createdAt)}`)
         .digest('hex');
-      await AuditLogModel.create({ ...enriched, prevHash, hash });
+      await AuditLogModel.create({ ...enriched, prevHash, hash, createdAt });
       chainHead = { hash, fetchedAt: Date.now() };
       return hash;
     });
@@ -173,15 +201,35 @@ export interface ChainVerification {
 /** Admin-only integrity check over the audit chain. */
 export async function verifyChain(limit = 5_000): Promise<ChainVerification> {
   await connectDb();
-  const entries = await AuditLogModel.find({}, { event: 1, severity: 1, userId: 1, actor: 1, outcome: 1, createdAt: 1, prevHash: 1, hash: 1 })
-    .sort({ createdAt: 1 })
+  const entries = await AuditLogModel.find(
+    {},
+    {
+      _id: 1,
+      event: 1,
+      severity: 1,
+      userId: 1,
+      actor: 1,
+      outcome: 1,
+      createdAt: 1,
+      prevHash: 1,
+      hash: 1,
+    },
+  )
+    // `_id` breaks ties: writes are serialised, but several can share a
+    // millisecond, and an unstable sort would report a healthy chain as forked.
+    .sort({ createdAt: 1, _id: 1 })
     .limit(limit)
     .lean();
 
   let prev = 'genesis';
   for (const entry of entries) {
     if ((entry.prevHash ?? 'genesis') !== prev) {
-      return { ok: false, checked: entries.length, brokenAt: entry.hash, reason: 'prevHash mismatch' };
+      return {
+        ok: false,
+        checked: entries.length,
+        brokenAt: entry.hash,
+        reason: 'prevHash mismatch',
+      };
     }
     const expected = createHash('sha256')
       .update(

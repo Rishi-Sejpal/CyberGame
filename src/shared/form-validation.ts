@@ -129,7 +129,10 @@ export function validateRegister(values: RegisterValues): ValidateResult {
   const email = validateEmail(values.email);
   if (email) errors.email = email;
 
-  const password = validatePassword(values.password, { username: values.username, email: values.email });
+  const password = validatePassword(values.password, {
+    username: values.username,
+    email: values.email,
+  });
   if (password) errors.password = password;
 
   const confirm = validateConfirmation(values.confirmPassword, values.password);

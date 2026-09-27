@@ -143,15 +143,17 @@ export interface LearningMetadata {
   references?: string[];
 }
 
-export function isCompleteLearningMetadata(meta: Partial<LearningMetadata> | undefined): meta is LearningMetadata {
+export function isCompleteLearningMetadata(
+  meta: Partial<LearningMetadata> | undefined,
+): meta is LearningMetadata {
   return Boolean(
     meta &&
-      meta.concept &&
-      meta.difficulty &&
-      meta.learningObjective &&
-      Array.isArray(meta.prerequisiteConcepts) &&
-      meta.hint &&
-      meta.solutionExplanation,
+    meta.concept &&
+    meta.difficulty &&
+    meta.learningObjective &&
+    Array.isArray(meta.prerequisiteConcepts) &&
+    meta.hint &&
+    meta.solutionExplanation,
   );
 }
 
@@ -159,13 +161,7 @@ export function isCompleteLearningMetadata(meta: Partial<LearningMetadata> | und
 // Inventory
 // ---------------------------------------------------------------------------
 
-export const ITEM_KINDS = [
-  'tool',
-  'badge',
-  'key-item',
-  'cosmetic',
-  'schematic',
-] as const;
+export const ITEM_KINDS = ['tool', 'badge', 'key-item', 'cosmetic', 'schematic'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
 
 export interface ItemDefinition {

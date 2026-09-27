@@ -32,12 +32,8 @@ export function Dashboard({ user, profile }: { user: AccountView; profile: Profi
   return (
     <div className="space-y-6">
       <header className="animate-fade-up">
-        <p className="text-[0.625rem] uppercase tracking-[0.3em] text-neon/70">
-          Operator status
-        </p>
-        <h1 className="mt-2 text-lg sm:text-xl">
-          Welcome back, {user.displayName}
-        </h1>
+        <p className="text-[0.625rem] uppercase tracking-[0.3em] text-neon/70">Operator status</p>
+        <h1 className="mt-2 text-lg sm:text-xl">Welcome back, {user.displayName}</h1>
         <p className="mt-1 text-xs text-ink-dim">
           {user.emailVerified
             ? 'Account verified. Everything is unlocked up to your current tier.'
@@ -47,7 +43,11 @@ export function Dashboard({ user, profile }: { user: AccountView; profile: Profi
 
       <section aria-label="Progression" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Level" value={level} hint={tier.label} tone="neon" />
-        <Stat label="Total XP" value={formatNumber(xp)} hint={`${formatNumber(intoLevel)} / ${formatNumber(needed)} to next`} />
+        <Stat
+          label="Total XP"
+          value={formatNumber(xp)}
+          hint={`${formatNumber(intoLevel)} / ${formatNumber(needed)} to next`}
+        />
         <Stat
           label="Streak"
           value={`${profile?.streakDays ?? 0}d`}
@@ -65,9 +65,7 @@ export function Dashboard({ user, profile }: { user: AccountView; profile: Profi
         <PanelHeader
           title="Next milestone"
           description={`Level ${level + 1} unlocks at ${formatNumber(needed)} XP into this level.`}
-          actions={
-            <Chip tone="neon">{tier.label}</Chip>
-          }
+          actions={<Chip tone="neon">{tier.label}</Chip>}
         />
         <div className="px-5 py-4">
           <ProgressBar value={intoLevel} max={needed} label={`Progress to level ${level + 1}`} />
@@ -93,14 +91,46 @@ export function Dashboard({ user, profile }: { user: AccountView; profile: Profi
           <div className="px-5 py-4">
             <ol className="space-y-2">
               {[
-                { id: 'networking.l1', name: 'First contact', done: (stats?.levelsCompleted ?? 0) >= 1 },
-                { id: 'networking.l2', name: 'The local network', done: (stats?.levelsCompleted ?? 0) >= 2 },
-                { id: 'networking.l3', name: 'Subnets and masks', done: (stats?.levelsCompleted ?? 0) >= 3 },
-                { id: 'networking.l4', name: 'Routing tables', done: (stats?.levelsCompleted ?? 0) >= 4 },
-                { id: 'networking.l5', name: 'Packet analysis', done: (stats?.levelsCompleted ?? 0) >= 5 },
-                { id: 'networking.l6', name: 'Firewalls and NAT', done: (stats?.levelsCompleted ?? 0) >= 6 },
-                { id: 'networking.l7', name: 'DNS and services', done: (stats?.levelsCompleted ?? 0) >= 7 },
-                { id: 'networking.l8', name: 'Grid defence', done: (stats?.levelsCompleted ?? 0) >= 8 },
+                {
+                  id: 'networking.l1',
+                  name: 'First contact',
+                  done: (stats?.levelsCompleted ?? 0) >= 1,
+                },
+                {
+                  id: 'networking.l2',
+                  name: 'The local network',
+                  done: (stats?.levelsCompleted ?? 0) >= 2,
+                },
+                {
+                  id: 'networking.l3',
+                  name: 'Subnets and masks',
+                  done: (stats?.levelsCompleted ?? 0) >= 3,
+                },
+                {
+                  id: 'networking.l4',
+                  name: 'Routing tables',
+                  done: (stats?.levelsCompleted ?? 0) >= 4,
+                },
+                {
+                  id: 'networking.l5',
+                  name: 'Packet analysis',
+                  done: (stats?.levelsCompleted ?? 0) >= 5,
+                },
+                {
+                  id: 'networking.l6',
+                  name: 'Firewalls and NAT',
+                  done: (stats?.levelsCompleted ?? 0) >= 6,
+                },
+                {
+                  id: 'networking.l7',
+                  name: 'DNS and services',
+                  done: (stats?.levelsCompleted ?? 0) >= 7,
+                },
+                {
+                  id: 'networking.l8',
+                  name: 'Grid defence',
+                  done: (stats?.levelsCompleted ?? 0) >= 8,
+                },
               ].map((levelItem, index) => (
                 <li
                   key={levelItem.id}
@@ -136,9 +166,17 @@ export function Dashboard({ user, profile }: { user: AccountView; profile: Profi
               <Stat
                 label="Perfect runs"
                 value={stats?.perfectMissions ?? 0}
-                hint={stats?.fastestMissionMs ? `Best ${formatDuration(stats.fastestMissionMs)}` : 'No time yet'}
+                hint={
+                  stats?.fastestMissionMs
+                    ? `Best ${formatDuration(stats.fastestMissionMs)}`
+                    : 'No time yet'
+                }
               />
-              <Stat label="Packets read" value={stats?.packetsInspected ?? 0} hint={`${stats?.packetsFlagged ?? 0} flagged`} />
+              <Stat
+                label="Packets read"
+                value={stats?.packetsInspected ?? 0}
+                hint={`${stats?.packetsFlagged ?? 0} flagged`}
+              />
               <Stat
                 label="Play time"
                 value={formatDuration(stats?.playTimeMs ?? 0)}
@@ -165,8 +203,8 @@ export function Dashboard({ user, profile }: { user: AccountView; profile: Profi
       </div>
 
       <p className="text-center text-[0.6875rem] text-ink-faint">
-        Progress shown here is read-only. XP, unlocks and completions are awarded by the server when a
-        mission is verified — the browser cannot change them.
+        Progress shown here is read-only. XP, unlocks and completions are awarded by the server when
+        a mission is verified — the browser cannot change them.
       </p>
     </div>
   );

@@ -13,12 +13,14 @@ import { Chip, EmptyState, Panel, PanelHeader } from '@/components/ui/primitives
 export const PLANNED_ROUTES = {
   '/missions': {
     title: 'Missions',
-    summary: 'The mission board: one entry point per mission, with prerequisites and rewards shown up front.',
+    summary:
+      'The mission board: one entry point per mission, with prerequisites and rewards shown up front.',
     depends: 'Content catalogue seeding and the mission-start endpoint.',
   },
   '/game': {
     title: 'The Grid',
-    summary: 'The Phaser world. Walk between routers, patch panels and terminals; challenges open in place.',
+    summary:
+      'The Phaser world. Walk between routers, patch panels and terminals; challenges open in place.',
     depends: 'The tile renderer, camera, and the world save API.',
   },
   '/progress': {
@@ -65,9 +67,16 @@ export function ComingSoon({ route }: { route: PlannedRoute }) {
       </header>
 
       <Panel>
-        <PanelHeader title="Status" description="This page is a deliberate placeholder, not a bug." />
+        <PanelHeader
+          title="Status"
+          description="This page is a deliberate placeholder, not a bug."
+        />
         <div className="px-5 py-4">
-          <EmptyState title="Nothing here yet" description={entry.depends} action={<Chip tone="amber">Planned</Chip>} />
+          <EmptyState
+            title="Nothing here yet"
+            description={entry.depends}
+            action={<Chip tone="amber">Planned</Chip>}
+          />
         </div>
       </Panel>
     </div>

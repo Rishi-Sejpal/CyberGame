@@ -16,10 +16,7 @@ export const TIER_ORDER: Record<TierId, number> = {
   expert: 4,
 };
 
-export const TIER_META: Record<
-  TierId,
-  { label: string; color: string; description: string }
-> = {
+export const TIER_META: Record<TierId, { label: string; color: string; description: string }> = {
   beginner: {
     label: 'Beginner',
     color: 'var(--color-tier-beginner)',
@@ -64,7 +61,13 @@ export const MISSION_STATUSES = [
 ] as const;
 export type MissionStatus = (typeof MISSION_STATUSES)[number];
 
-export const LEVEL_STATUSES = ['locked', 'available', 'in_progress', 'completed', 'mastered'] as const;
+export const LEVEL_STATUSES = [
+  'locked',
+  'available',
+  'in_progress',
+  'completed',
+  'mastered',
+] as const;
 export type LevelStatus = (typeof LEVEL_STATUSES)[number];
 
 /** Base XP required to advance *from* the given level (1-indexed). */
@@ -76,7 +79,11 @@ export function xpToAdvance(level: number, base = 500, step = 350): number {
  * Deterministic level curve. Pure so the client can render a progress bar and
  * the server can recompute it independently — and so both agree by construction.
  */
-export function levelFromXp(xp: number, base = 500, step = 350): {
+export function levelFromXp(
+  xp: number,
+  base = 500,
+  step = 350,
+): {
   level: number;
   xpIntoLevel: number;
   xpForNextLevel: number;
@@ -130,7 +137,11 @@ export function nextStreak(
   today: string = utcDayKey(),
 ): { streakDays: number; longestStreakDays: number; lastActiveDay: string } {
   if (!current.lastActiveDay) {
-    return { streakDays: 1, longestStreakDays: Math.max(1, current.longestStreakDays), lastActiveDay: today };
+    return {
+      streakDays: 1,
+      longestStreakDays: Math.max(1, current.longestStreakDays),
+      lastActiveDay: today,
+    };
   }
   const gap = daysBetweenUtc(current.lastActiveDay, today);
   if (gap === 0) {
@@ -144,7 +155,11 @@ export function nextStreak(
       lastActiveDay: today,
     };
   }
-  return { streakDays: 1, longestStreakDays: Math.max(current.longestStreakDays, 1), lastActiveDay: today };
+  return {
+    streakDays: 1,
+    longestStreakDays: Math.max(current.longestStreakDays, 1),
+    lastActiveDay: today,
+  };
 }
 
 export const XP_EVENT_KINDS = [

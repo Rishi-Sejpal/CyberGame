@@ -67,7 +67,7 @@
     min-height: 100dvh;
     /* Faint CRT scanline wash — pure decoration, no layout cost. */
     background-image:
-      radial-gradient(1200px 600px at 20% -10%, rgb(139 108 255 / 0.10), transparent 60%),
+      radial-gradient(1200px 600px at 20% -10%, rgb(139 108 255 / 0.1), transparent 60%),
       radial-gradient(900px 500px at 90% 0%, rgb(63 245 192 / 0.07), transparent 55%);
     background-attachment: fixed;
   }
@@ -122,8 +122,7 @@
 @layer components {
   .panel {
     background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.02), transparent 40%),
-      var(--color-panel);
+      linear-gradient(180deg, rgb(255 255 255 / 0.02), transparent 40%), var(--color-panel);
     border: 1px solid var(--color-line);
     border-radius: var(--radius-panel);
     box-shadow: var(--shadow-panel);

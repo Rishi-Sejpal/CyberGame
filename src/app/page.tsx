@@ -21,13 +21,6 @@ export default async function LandingPage() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded focus:bg-neon focus:px-4 focus:py-2 focus:text-abyss"
-      >
-        Skip to content
-      </a>
-
       <header className="border-b border-line/60">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
           <p className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-neon/90">
@@ -71,7 +64,10 @@ export default async function LandingPage() {
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href={session ? '/dashboard' : '/register'} className="btn btn-primary px-6 py-3">
+              <Link
+                href={session ? '/dashboard' : '/register'}
+                className="btn btn-primary px-6 py-3"
+              >
                 {session ? 'Continue training' : 'Create a free callsign'}
               </Link>
               <Link href="#curriculum" className="btn btn-ghost px-6 py-3">
@@ -88,7 +84,9 @@ export default async function LandingPage() {
               ].map((item) => (
                 <div key={item.detail} className="panel-inset px-3.5 py-3">
                   <dt className="hud-text text-base text-neon">{item.term}</dt>
-                  <dd className="mt-1 text-[0.6875rem] leading-snug text-ink-faint">{item.detail}</dd>
+                  <dd className="mt-1 text-[0.6875rem] leading-snug text-ink-faint">
+                    {item.detail}
+                  </dd>
                 </div>
               ))}
             </dl>
@@ -200,8 +198,8 @@ export default async function LandingPage() {
 
       <footer className="border-t border-line/60 px-5 py-6 text-center text-[0.6875rem] text-ink-faint sm:px-8">
         <p>
-          CYBERGRID is a training environment. Every host, subnet and packet is simulated inside your
-          browser.
+          CYBERGRID is a training environment. Every host, subnet and packet is simulated inside
+          your browser.
         </p>
       </footer>
     </div>

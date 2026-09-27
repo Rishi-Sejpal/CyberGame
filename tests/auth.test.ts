@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { clearDatabase, teardownDatabase, useTestDatabase } from './helpers/db';
-import { buildRequest, readJson, sessionFromResponse, csrfFromResponse, type ApiEnvelope } from './helpers/request';
+import {
+  buildRequest,
+  readJson,
+  sessionFromResponse,
+  csrfFromResponse,
+  type ApiEnvelope,
+} from './helpers/request';
 import { resetRateLimit, RATE_RULES } from '@/server/security/rate-limit';
 
 const REGISTER = '/api/auth/register';
@@ -49,10 +55,9 @@ function clearLimits(): void {
 }
 
 async function registerAndLogin(): Promise<{ session: string; csrf: string; userId: string }> {
-  const reg = await register(
-    buildRequest(REGISTER, { body: VALID }),
-    { params: Promise.resolve({}) },
-  );
+  const reg = await register(buildRequest(REGISTER, { body: VALID }), {
+    params: Promise.resolve({}),
+  });
   expect(reg.status).toBe(201);
   const session = sessionFromResponse(reg)!;
   const csrf = csrfFromResponse(reg)!;
@@ -74,7 +79,9 @@ describe('authentication', () => {
 
   describe('registration', () => {
     it('creates an account, a profile and a session', async () => {
-      const res = await register(buildRequest(REGISTER, { body: VALID }), { params: Promise.resolve({}) });
+      const res = await register(buildRequest(REGISTER, { body: VALID }), {
+        params: Promise.resolve({}),
+      });
       expect(res.status).toBe(201);
 
       const body = await readJson<ApiEnvelope<{ user: Record<string, unknown> }>>(res);
@@ -91,10 +98,9 @@ describe('authentication', () => {
     });
 
     it('never lets the client choose a role', async () => {
-      const res = await register(
-        buildRequest(REGISTER, { body: { ...VALID, role: 'admin' } }),
-        { params: Promise.resolve({}) },
-      );
+      const res = await register(buildRequest(REGISTER, { body: { ...VALID, role: 'admin' } }), {
+        params: Promise.resolve({}),
+      });
       // `.strict()` rejects the unknown key outright.
       expect(res.status).toBe(422);
       const body = await readJson<ApiEnvelope<unknown>>(res);
@@ -103,7 +109,9 @@ describe('authentication', () => {
 
     it('rejects a weak password with actionable field detail', async () => {
       const res = await register(
-        buildRequest(REGISTER, { body: { ...VALID, password: 'password', confirmPassword: 'password' } }),
+        buildRequest(REGISTER, {
+          body: { ...VALID, password: 'password', confirmPassword: 'password' },
+        }),
         { params: Promise.resolve({}) },
       );
       expect(res.status).toBe(422);
@@ -132,14 +140,18 @@ describe('authentication', () => {
 
     it('rejects a duplicate username', async () => {
       await registerAndLogin();
-      const res = await register(buildRequest(REGISTER, { body: VALID }), { params: Promise.resolve({}) });
+      const res = await register(buildRequest(REGISTER, { body: VALID }), {
+        params: Promise.resolve({}),
+      });
       expect(res.status).toBe(409);
     });
 
     it('rejects a duplicate email regardless of case', async () => {
       await registerAndLogin();
       const res = await register(
-        buildRequest(REGISTER, { body: { ...VALID, username: 'nettra2', email: 'NETTRA@CYBERGRID.TEST' } }),
+        buildRequest(REGISTER, {
+          body: { ...VALID, username: 'nettra2', email: 'NETTRA@CYBERGRID.TEST' },
+        }),
         { params: Promise.resolve({}) },
       );
       expect(res.status).toBe(409);
@@ -185,7 +197,9 @@ describe('authentication', () => {
     it('signs in with an email regardless of case', async () => {
       await registerAndLogin();
       const res = await login(
-        buildRequest(LOGIN, { body: { identifier: 'NETTRA@CYBERGrid.test', password: VALID.password } }),
+        buildRequest(LOGIN, {
+          body: { identifier: 'NETTRA@CYBERGrid.test', password: VALID.password },
+        }),
         { params: Promise.resolve({}) },
       );
       expect(res.status).toBe(200);
@@ -199,7 +213,9 @@ describe('authentication', () => {
         { params: Promise.resolve({}) },
       );
       const unknownUser = await login(
-        buildRequest(LOGIN, { body: { identifier: 'ghost_operator', password: 'Wrong-Password-77!' } }),
+        buildRequest(LOGIN, {
+          body: { identifier: 'ghost_operator', password: 'Wrong-Password-77!' },
+        }),
         { params: Promise.resolve({}) },
       );
 
@@ -231,11 +247,15 @@ describe('authentication', () => {
         { params: Promise.resolve({}) },
       );
       const byGhost = await login(
-        buildRequest(LOGIN, { body: { identifier: 'nobody@nowhere.test', password: 'totally-wrong-1!' } }),
+        buildRequest(LOGIN, {
+          body: { identifier: 'nobody@nowhere.test', password: 'totally-wrong-1!' },
+        }),
         { params: Promise.resolve({}) },
       );
       expect(byEmail.status).toBe(byGhost.status);
-      expect((await readJson<ApiEnvelope<unknown>>(byEmail)).error!.message).toBe((await readJson<ApiEnvelope<unknown>>(byGhost)).error!.message);
+      expect((await readJson<ApiEnvelope<unknown>>(byEmail)).error!.message).toBe(
+        (await readJson<ApiEnvelope<unknown>>(byGhost)).error!.message,
+      );
     });
   });
 
@@ -251,7 +271,9 @@ describe('authentication', () => {
       const body = await readJson<ApiEnvelope<{ user: { username: string } }>>(authed);
       expect(body.data?.user.username).toBe('nettra');
 
-      const anon = await me(buildRequest('/api/auth/me', { method: 'GET' }), { params: Promise.resolve({}) });
+      const anon = await me(buildRequest('/api/auth/me', { method: 'GET' }), {
+        params: Promise.resolve({}),
+      });
       expect(anon.status).toBe(401);
       void csrf;
     });
@@ -267,10 +289,9 @@ describe('authentication', () => {
     it('invalidates the session on logout', async () => {
       const { session } = await registerAndLogin();
 
-      const out = await logout(
-        buildRequest(LOGOUT, { cookies: { cg_session: session } }),
-        { params: Promise.resolve({}) },
-      );
+      const out = await logout(buildRequest(LOGOUT, { cookies: { cg_session: session } }), {
+        params: Promise.resolve({}),
+      });
       expect(out.status).toBe(200);
 
       const after = await me(
@@ -308,7 +329,8 @@ describe('authentication', () => {
         { params: Promise.resolve({}) },
       );
       expect(res.status).toBe(200);
-      const body = await readJson<ApiEnvelope<{ sessions: Array<{ id: string; current: boolean }> }>>(res);
+      const body =
+        await readJson<ApiEnvelope<{ sessions: Array<{ id: string; current: boolean }> }>>(res);
       expect(body.data?.sessions.length).toBeGreaterThanOrEqual(1);
       expect(body.data?.sessions.some((s) => s.current)).toBe(true);
     });
@@ -327,11 +349,15 @@ describe('authentication', () => {
       const attackerSession = sessionFromResponse(attacker)!;
 
       const list = await sessions(
-        buildRequest('/api/auth/sessions', { method: 'GET', cookies: { cg_session: victim.session } }),
+        buildRequest('/api/auth/sessions', {
+          method: 'GET',
+          cookies: { cg_session: victim.session },
+        }),
         { params: Promise.resolve({}) },
       );
-      const victimSessionId = (await readJson<ApiEnvelope<{ sessions: Array<{ id: string }> }>>(list)).data!
-        .sessions[0]!.id;
+      const victimSessionId = (
+        await readJson<ApiEnvelope<{ sessions: Array<{ id: string }> }>>(list)
+      ).data!.sessions[0]!.id;
 
       const revoke = await revokeSession(
         buildRequest(`/api/auth/sessions/${victimSessionId}`, {
@@ -395,18 +421,16 @@ describe('authentication', () => {
     });
 
     it('rejects a mutation with no Origin at all', async () => {
-      const res = await register(
-        buildRequest(REGISTER, { body: VALID, origin: null }),
-        { params: Promise.resolve({}) },
-      );
+      const res = await register(buildRequest(REGISTER, { body: VALID, origin: null }), {
+        params: Promise.resolve({}),
+      });
       expect(res.status).toBe(403);
     });
 
     it('rejects a mismatched double-submit token', async () => {
-      const res = await register(
-        buildRequest(REGISTER, { body: VALID, csrf: 'invalid' }),
-        { params: Promise.resolve({}) },
-      );
+      const res = await register(buildRequest(REGISTER, { body: VALID, csrf: 'invalid' }), {
+        params: Promise.resolve({}),
+      });
       expect(res.status).toBe(403);
     });
 
@@ -434,8 +458,8 @@ describe('authentication', () => {
       expect(known.status).toBe(200);
       expect(unknown.status).toBe(200);
       expect((await readJson<ApiEnvelope<unknown>>(known)).data).toEqual(
-      (await readJson<ApiEnvelope<unknown>>(unknown)).data,
-    );
+        (await readJson<ApiEnvelope<unknown>>(unknown)).data,
+      );
     });
 
     it('rejects an invalid reset token without revealing why', async () => {
@@ -507,12 +531,12 @@ describe('authentication', () => {
       const mail = await EmailOutboxModel.findOne({ kind: 'verification' }).lean();
       const token = new URL(mail!.actionUrl!).searchParams.get('token')!;
 
-      const res = await verifyEmail(
-        buildRequest('/api/auth/verify-email', { body: { token } }),
-        { params: Promise.resolve({}) },
-      );
+      const res = await verifyEmail(buildRequest('/api/auth/verify-email', { body: { token } }), {
+        params: Promise.resolve({}),
+      });
       expect(res.status).toBe(200);
-      const body = await readJson<ApiEnvelope<{ user: { status: string; emailVerified: boolean } }>>(res);
+      const body =
+        await readJson<ApiEnvelope<{ user: { status: string; emailVerified: boolean } }>>(res);
       expect(body.data?.user.status).toBe('active');
       expect(body.data?.user.emailVerified).toBe(true);
       void userId;
@@ -582,7 +606,9 @@ describe('cookie serialisation', () => {
       path: '/',
       maxAge: 3600,
     });
-    expect(serialized).toBe('cg_session=a%20b%2Fc; Path=/; Max-Age=3600; HttpOnly; SameSite=Lax; Secure');
+    expect(serialized).toBe(
+      'cg_session=a%20b%2Fc; Path=/; Max-Age=3600; HttpOnly; SameSite=Lax; Secure',
+    );
   });
 
   it('omits Secure when the deployment is plain http on localhost', () => {
@@ -640,8 +666,9 @@ describe('cookie serialisation', () => {
 
     // The trap itself: reconstructing a header from that store yields nothing.
     expect(nextStore.get('cookie')).toBeUndefined();
-    expect(createCookieJar(cookieSourceFromHeader(nextStore.get('cookie')?.value)).get('cg_session'))
-      .toBeUndefined();
+    expect(
+      createCookieJar(cookieSourceFromHeader(nextStore.get('cookie')?.value)).get('cg_session'),
+    ).toBeUndefined();
   });
 
   it('applies queued writes and deletions onto a response', () => {

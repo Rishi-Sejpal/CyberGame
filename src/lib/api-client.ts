@@ -148,17 +148,21 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
       // The edge middleware arms this cookie on the very first page view. If it
       // is genuinely absent the page was rendered without middleware (a raw API
       // probe, or a stripped proxy), and the write would be refused anyway.
-      throw new ApiRequestError(
-        'Your security token is missing. Refresh the page and try again.',
-        { status: 0, body: null, transport: 'missing_csrf' },
-      );
+      throw new ApiRequestError('Your security token is missing. Refresh the page and try again.', {
+        status: 0,
+        body: null,
+        transport: 'missing_csrf',
+      });
     }
     headers['x-csrf-token'] = token;
   }
 
   // A caller-supplied signal and our own timeout must both abort the request.
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(new DOMException('Timeout', 'TimeoutError')), options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  const timeout = setTimeout(
+    () => controller.abort(new DOMException('Timeout', 'TimeoutError')),
+    options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+  );
   const onCallerAbort = () => controller.abort(options.signal?.reason);
   options.signal?.addEventListener('abort', onCallerAbort, { once: true });
 
@@ -174,7 +178,11 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
     });
   } catch (error) {
     if (options.signal?.aborted) {
-      throw new ApiRequestError('Request cancelled.', { status: 0, body: null, transport: 'aborted' });
+      throw new ApiRequestError('Request cancelled.', {
+        status: 0,
+        body: null,
+        transport: 'aborted',
+      });
     }
     if (isTimeout(error, controller.signal)) {
       throw new ApiRequestError('The server took too long to respond. Try again.', {

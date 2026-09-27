@@ -17,15 +17,15 @@
     "lint": "node node_modules/eslint/bin/eslint.js .",
     "lint:fix": "node node_modules/eslint/bin/eslint.js . --fix",
     "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
-    "format": "node node_modules/prettier/bin/prettier.cjs --write \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.mjs\"",
-    "format:check": "node node_modules/prettier/bin/prettier.cjs --check \"src/**/*.{ts,tsx,css}\"",
+    "format": "node node_modules/prettier/bin/prettier.cjs --write \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.mjs\" \"tests/**/*.ts\" \"*.{ts,mjs,json,md}\" \"**/*.md\"",
+    "format:check": "node node_modules/prettier/bin/prettier.cjs --check \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.mjs\" \"tests/**/*.ts\" \"*.{ts,mjs,json,md}\" \"**/*.md\"",
     "test": "node node_modules/vitest/vitest.mjs run",
     "test:watch": "node node_modules/vitest/vitest.mjs",
     "test:coverage": "node node_modules/vitest/vitest.mjs run --coverage",
     "db:dev": "node scripts/dev-db.mjs",
     "db:status": "node scripts/dev-db.mjs status",
     "db:stop": "node scripts/dev-db.mjs stop",
-    "verify": "npm run lint && npm run typecheck && npm run test"
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run format:check"
   },
   "dependencies": {
     "@node-rs/argon2": "2.2.1",

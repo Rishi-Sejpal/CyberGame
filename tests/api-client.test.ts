@@ -21,7 +21,11 @@ import {
 
 const CSRF = 'token-abc123';
 
-function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): Response {
+function jsonResponse(
+  status: number,
+  body: unknown,
+  headers: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { 'content-type': 'application/json', ...headers },
@@ -335,9 +339,9 @@ describe('renderable messages', () => {
   });
 
   it('falls back to the summary, then to a generic line', () => {
-    expect(errorMessage(new ApiRequestError('Too many attempts.', { status: 429, body: null }))).toBe(
-      'Too many attempts.',
-    );
+    expect(
+      errorMessage(new ApiRequestError('Too many attempts.', { status: 429, body: null })),
+    ).toBe('Too many attempts.');
     expect(errorMessage('a string')).toBe('Something went wrong. Try again.');
     expect(errorMessage(null)).toBe('Something went wrong. Try again.');
     expect(errorMessage(new Error('boom'))).toBe('boom');

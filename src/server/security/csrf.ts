@@ -4,12 +4,7 @@ import type { NextRequest } from 'next/server';
 import { env, cookiesAreSecure, isOriginAllowed } from '@/server/config/env';
 import { constantTimeEqual, generateSecret, hashToken } from './crypto';
 import { auditDetached } from './audit';
-import {
-  createCookieJar,
-  cookieSourceFromHeader,
-  readCookie,
-  type CookieJar,
-} from './cookies';
+import { readCookie, type CookieJar } from './cookies';
 
 /**
  * CSRF protection — three independent layers.
@@ -57,19 +52,10 @@ export function ensureCsrfToken(jar: CookieJar): string {
   return token;
 }
 
-/** Read-only variant for Server Components and the edge middleware. */
-export function ensureCsrfTokenOnRequest(request: NextRequest | Request): CookieJar {
-  const jar = createCookieJar(cookieSourceFromHeader(request.headers.get('cookie')));
-  ensureCsrfToken(jar);
-  return jar;
-}
+/** Read-only variant removed: the edge middleware owns first-issue. */
 
 export type CsrfFailureReason =
-  | 'missing_origin'
-  | 'origin_not_allowed'
-  | 'missing_cookie'
-  | 'missing_header'
-  | 'token_mismatch';
+  'missing_origin' | 'origin_not_allowed' | 'missing_cookie' | 'missing_header' | 'token_mismatch';
 
 export interface CsrfResult {
   ok: boolean;

@@ -96,7 +96,9 @@ export function Field({
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy || undefined}
         />
-        {trailing ? <div className="absolute inset-y-0 right-0 flex items-center pr-1">{trailing}</div> : null}
+        {trailing ? (
+          <div className="absolute inset-y-0 right-0 flex items-center pr-1">{trailing}</div>
+        ) : null}
       </div>
 
       {/*
@@ -277,11 +279,15 @@ export function PasswordField({
         minLength={minLength}
         autoFocus={autoFocus}
         spellCheck={false}
-        trailing={<PasswordReveal revealed={revealed} onToggle={() => setRevealed((r) => !r)} label={label} />}
+        trailing={
+          <PasswordReveal
+            revealed={revealed}
+            onToggle={() => setRevealed((r) => !r)}
+            label={label}
+          />
+        }
       />
-      {meter ? (
-        <PasswordStrength password={value} context={context} id={strengthId} />
-      ) : null}
+      {meter ? <PasswordStrength password={value} context={context} id={strengthId} /> : null}
     </div>
   );
 }

@@ -6,10 +6,8 @@ coverage
 tests/.artifacts
 .mongo
 .mongo-*
-public/assets/generated
 .env
 .env.local
 .env.*.local
 package-lock.json
 .tmp
-.mongo

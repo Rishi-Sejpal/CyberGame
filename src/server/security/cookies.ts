@@ -99,7 +99,10 @@ export function createCookieJar(source?: ReadableCookieSource): CookieJar {
     },
     applyTo(response) {
       for (const cookie of writes) {
-        response.headers.append('Set-Cookie', serializeCookie(cookie.name, cookie.value, cookie.options));
+        response.headers.append(
+          'Set-Cookie',
+          serializeCookie(cookie.name, cookie.value, cookie.options),
+        );
       }
       for (const cookie of deletions) {
         response.headers.append('Set-Cookie', serializeDeletion(cookie.name, cookie.options));

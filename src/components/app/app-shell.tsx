@@ -5,7 +5,12 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button, Chip } from '@/components/ui/primitives';
 import { errorMessage } from '@/lib/api-client';
-import { authApi, useAuth, type PublicProfile, type PublicUser } from '@/components/auth/auth-provider';
+import {
+  authApi,
+  useAuth,
+  type PublicProfile,
+  type PublicUser,
+} from '@/components/auth/auth-provider';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
 /**
@@ -95,13 +100,6 @@ export function AppShell({
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded focus:bg-neon focus:px-4 focus:py-2 focus:text-abyss"
-      >
-        Skip to content
-      </a>
-
       <header className="sticky top-0 z-40 border-b border-line/70 bg-abyss/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6">
           <Link
@@ -114,7 +112,10 @@ export function AppShell({
             <span className="hidden sm:inline">CYBERGRID</span>
           </Link>
 
-          <nav aria-label="Primary" className="no-scrollbar ml-2 flex flex-1 items-center gap-1 overflow-x-auto">
+          <nav
+            aria-label="Primary"
+            className="no-scrollbar ml-2 flex flex-1 items-center gap-1 overflow-x-auto"
+          >
             {NAV.map((item) => {
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
@@ -191,10 +192,18 @@ export function AppShell({
                   ) : null}
                 </div>
 
-                <Link role="menuitem" href="/profile" className="block px-3 py-2 text-xs hover:bg-white/5">
+                <Link
+                  role="menuitem"
+                  href="/profile"
+                  className="block px-3 py-2 text-xs hover:bg-white/5"
+                >
                   Profile
                 </Link>
-                <Link role="menuitem" href="/settings" className="block px-3 py-2 text-xs hover:bg-white/5">
+                <Link
+                  role="menuitem"
+                  href="/settings"
+                  className="block px-3 py-2 text-xs hover:bg-white/5"
+                >
                   Settings
                 </Link>
                 <Link
