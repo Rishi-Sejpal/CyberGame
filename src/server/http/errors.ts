@@ -79,6 +79,13 @@ export const badRequest = (message = 'Malformed request.', details?: Record<stri
 
 export const unauthorized = (message = GENERIC_AUTH_ERROR) => new AppError('unauthorized', message);
 
+/**
+ * The single failure used by login, logout-of-unknown-session, email
+ * verification and password reset. Keeping one factory means an audit of this
+ * file proves the message cannot drift between flows.
+ */
+export const genericAuthFailure = () => new AppError('unauthorized', GENERIC_AUTH_ERROR);
+
 export const forbidden = (message = 'You do not have access to this resource.') =>
   new AppError('forbidden', message);
 

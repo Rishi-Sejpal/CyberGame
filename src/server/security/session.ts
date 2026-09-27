@@ -1,30 +1,31 @@
 import 'server-only';
 
-import { cookies } from 'next/headers';
 import { connectDb } from '@/server/db/connect';
 import { SessionModel } from '@/server/db/models/session.model';
 import { UserModel, type UserDoc, type UserRole, type UserStatus } from '@/server/db/models/user.model';
 import { ProfileModel } from '@/server/db/models/profile.model';
 import { env, cookiesAreSecure } from '@/server/config/env';
-import { generateSecret, hashToken, fingerprint } from './crypto';
+import { generateSecret, hashToken } from './crypto';
 import { auditDetached } from './audit';
+import type { CookieJar, CookieOptions } from './cookies';
 
 /**
  * Server-side sessions.
  *
  * Threat model addressed here
  * ---------------------------
- * 1. *Stolen database*  → the cookie token is never stored; only SHA-256 of it.
- * 2. *Stolen cookie*     → bound to an IP-prefix-agnostic but UA-labelled record,
- *                          and revocable in one call.
- * 3. *Password change*  → `users.sessionEpoch` is incremented, which invalidates
- *                          every existing session at the next request.
- * 4. *XSS exfiltration*  → cookie is `HttpOnly`, so `document.cookie` cannot read
- *                          it. Nothing sensitive is mirrored into localStorage.
- * 5. *Session fixation* → the token is regenerated on every login and on every
- *                          privilege change; there is no anonymous pre-session.
- * 6. *Fixation via CSRF* → see `csrf.ts`; the session cookie is `SameSite=Lax`
- *                          and mutating routes require a matching CSRF token.
+ * 1. *Stolen database*  → the cookie carries a random 256-bit token; only its
+ *    SHA-256 digest is stored, so a dump cannot be replayed as a live session.
+ * 2. *Stolen cookie*     → revocable in one indexed call, and visible to the
+ *    owner in "active sessions" so a theft can be spotted and cut off.
+ * 3. *Password change*  → `users.sessionEpoch` is incremented, invalidating every
+ *    session minted before it with a single comparison per request.
+ * 4. *XSS*              → the cookie is `HttpOnly`, so `document.cookie` cannot
+ *    read it. Nothing sensitive is mirrored into localStorage.
+ * 5. *Fixation*         → the token is regenerated on every login; there is no
+ *    anonymous pre-session to poison.
+ * 6. *CSRF*             → see `csrf.ts`; the cookie is `SameSite=Lax` and every
+ *    mutating route additionally requires a matching CSRF token.
  */
 
 const DAY_MS = 86_400_000;
@@ -51,14 +52,20 @@ export interface SessionInfo {
   current: boolean;
 }
 
-function cookieOptions(maxAgeSeconds: number) {
+export interface ResolvedSession {
+  user: SessionUser;
+  sessionId: string;
+  expiresAt: Date;
+}
+
+function cookieOptions(maxAgeSeconds: number): CookieOptions {
   return {
     httpOnly: true,
     secure: cookiesAreSecure(),
-    sameSite: 'lax' as const,
+    sameSite: 'lax',
+    // No `domain` => host-only cookie, the narrowest useful scope.
     path: '/',
     maxAge: maxAgeSeconds,
-    // No `domain` — host-only cookie is the narrowest useful scope.
   };
 }
 
@@ -66,13 +73,16 @@ export function sessionCookieName(): string {
   return env().SESSION_COOKIE_NAME;
 }
 
-export async function createSession(params: {
-  userId: string;
-  sessionEpoch: number;
-  label: string;
-  ip: string | null;
-  userAgent: string | null;
-}): Promise<{ token: string; sessionId: string; expiresAt: Date }> {
+export async function createSession(
+  params: {
+    userId: string;
+    sessionEpoch: number;
+    label: string;
+    ip: string | null;
+    userAgent: string | null;
+  },
+  jar: CookieJar,
+): Promise<{ sessionId: string; expiresAt: Date }> {
   await connectDb();
 
   const token = generateSecret(32);
@@ -93,18 +103,17 @@ export async function createSession(params: {
     absoluteExpiresAt,
   });
 
+  jar.set(sessionCookieName(), token, cookieOptions(ttlHours * 3_600));
+
   auditDetached({
     event: 'auth.login.success',
     userId: params.userId,
     ip: params.ip,
     userAgent: params.userAgent,
-    metadata: { sessionFingerprint: fingerprint(token), label: params.label },
+    metadata: { sessionId: String(doc._id), label: params.label },
   });
 
-  const jar = await cookies();
-  jar.set(sessionCookieName(), token, cookieOptions(ttlHours * 3_600));
-
-  return { token, sessionId: String(doc._id), expiresAt };
+  return { sessionId: String(doc._id), expiresAt };
 }
 
 const userProjection = {
@@ -130,22 +139,21 @@ interface SessionRow {
   userAgent: string | null;
 }
 
-export interface ResolvedSession {
-  user: SessionUser;
-  sessionId: string;
-  expiresAt: Date;
-}
+type ProjectedUser = Pick<
+  UserDoc,
+  'username' | 'displayName' | 'role' | 'status' | 'emailVerified' | 'sessionEpoch'
+> & { _id: unknown };
 
 /**
  * Validates the session cookie against the database.
  *
- * Returns `null` for every failure mode — absent, malformed, unknown, expired,
- * revoked, or belonging to a user whose `sessionEpoch` has moved on. The caller
- * cannot distinguish them, which is exactly what we want.
+ * Returns `null` for *every* failure mode — absent, malformed, unknown, expired,
+ * revoked, or owned by a user whose `sessionEpoch` has moved on. The caller
+ * cannot distinguish them, which is the point.
  */
-export async function resolveSession(): Promise<ResolvedSession | null> {
-  const jar = await cookies();
-  const token = jar.get(sessionCookieName())?.value;
+export async function resolveSession(jar: CookieJar): Promise<ResolvedSession | null> {
+  const token = jar.get(sessionCookieName());
+  // Cheap length gate before touching the database.
   if (!token || token.length < 32 || token.length > 128) return null;
 
   try {
@@ -167,32 +175,25 @@ export async function resolveSession(): Promise<ResolvedSession | null> {
       })
       .lean()) as SessionRow | null;
 
-    if (!session) return null;
-    if (session.revokedAt) return null;
-    if (session.expiresAt.getTime() <= Date.now()) return null;
-    if (session.absoluteExpiresAt.getTime() <= Date.now()) return null;
+    if (!session || session.revokedAt) return null;
 
-    const user = (await UserModel.findById(session.userId, userProjection).lean()) as
-      | (Pick<
-          UserDoc,
-          'username' | 'displayName' | 'role' | 'status' | 'emailVerified' | 'sessionEpoch'
-        > & { _id: unknown })
-      | null;
+    const now = Date.now();
+    if (session.expiresAt.getTime() <= now) return null;
+    if (session.absoluteExpiresAt.getTime() <= now) return null;
 
+    const user = (await UserModel.findById(session.userId, userProjection).lean()) as ProjectedUser | null;
     if (!user) return null;
     if (user.status === 'banned' || user.status === 'suspended') return null;
     if (user.sessionEpoch !== session.sessionEpoch) return null;
 
-    // Sliding refresh, bounded by the absolute ceiling.
-    if (session.expiresAt.getTime() - Date.now() < SESSION_REFRESH_THRESHOLD_MS) {
+    // Sliding refresh, hard-bounded by the absolute ceiling.
+    if (session.expiresAt.getTime() - now < SESSION_REFRESH_THRESHOLD_MS) {
       const ttlHours = env().SESSION_TTL_HOURS;
-      const nextExpiry = new Date(Math.min(Date.now() + ttlHours * 3_600_000, session.absoluteExpiresAt.getTime()));
-      await SessionModel.updateOne(
-        { _id: session._id, tokenHash },
-        { $set: { expiresAt: nextExpiry } },
+      const nextExpiry = new Date(
+        Math.min(now + ttlHours * 3_600_000, session.absoluteExpiresAt.getTime()),
       );
-      const jar2 = await cookies();
-      jar2.set(sessionCookieName(), token, cookieOptions(ttlHours * 3_600));
+      await SessionModel.updateOne({ _id: session._id, tokenHash }, { $set: { expiresAt: nextExpiry } });
+      jar.set(sessionCookieName(), token, cookieOptions(ttlHours * 3_600));
     }
 
     return {
@@ -217,17 +218,24 @@ export async function resolveSession(): Promise<ResolvedSession | null> {
   }
 }
 
-export async function destroyCurrentSession(): Promise<void> {
-  const jar = await cookies();
-  const token = jar.get(sessionCookieName())?.value;
-  if (token) {
-    await connectDb();
-    await SessionModel.updateOne(
-      { tokenHash: hashToken(token), revokedAt: null },
-      { $set: { revokedAt: new Date(), revokedReason: 'logout' } },
-    );
-  }
-  jar.delete(sessionCookieName());
+/** Convenience wrapper for Server Components, which can read but not write cookies. */
+export async function resolveSessionFromRequest(request: Request): Promise<ResolvedSession | null> {
+  const { createCookieJar, cookieSourceFromHeader } = await import('./cookies');
+  return resolveSession(createCookieJar(cookieSourceFromHeader(request.headers.get('cookie'))));
+}
+
+export async function destroySessionByToken(token: string, reason = 'logout'): Promise<void> {
+  await connectDb();
+  await SessionModel.updateOne(
+    { tokenHash: hashToken(token), revokedAt: null },
+    { $set: { revokedAt: new Date(), revokedReason: reason.slice(0, 64) } },
+  );
+}
+
+export function destroyCurrentSession(jar: CookieJar, token: string | undefined): Promise<void> {
+  const done = token ? destroySessionByToken(token, 'logout') : Promise.resolve();
+  jar.delete(sessionCookieName(), { path: '/', secure: cookiesAreSecure() });
+  return done;
 }
 
 export async function revokeAllSessions(
@@ -250,10 +258,7 @@ export async function revokeAllSessions(
   return result.modifiedCount;
 }
 
-export async function listSessions(
-  userId: string,
-  currentSessionId: string,
-): Promise<SessionInfo[]> {
+export async function listSessions(userId: string, currentSessionId: string): Promise<SessionInfo[]> {
   await connectDb();
   const rows = await SessionModel.find({ userId, revokedAt: null })
     .sort({ lastSeenAt: -1 })

@@ -1,7 +1,8 @@
 import 'server-only';
 
-import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { env } from '@/server/config/env';
+import { timingSafeEqual } from './timing';
 
 /**
  * Cryptographic primitives.
@@ -49,15 +50,12 @@ export function fingerprint(value: string): string {
   return hashToken(value).slice(0, 8);
 }
 
+/**
+ * Delegates to the runtime-agnostic implementation so the Node handlers and the
+ * edge middleware cannot drift apart on comparison behaviour.
+ */
 export function constantTimeEqual(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, 'utf8');
-  const bufB = Buffer.from(b, 'utf8');
-  if (bufA.length !== bufB.length) {
-    // Still burn a comparison so the timing does not reveal the length.
-    timingSafeEqual(bufA, bufA);
-    return false;
-  }
-  return timingSafeEqual(bufA, bufB);
+  return timingSafeEqual(a, b);
 }
 
 export function randomIdempotencyKey(): string {

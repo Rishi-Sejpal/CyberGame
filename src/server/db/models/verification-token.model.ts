@@ -43,6 +43,7 @@ const tokenSchema = defineSchema<VerificationTokenDoc>(
     maxAttempts: { type: Number, required: true, default: 5, min: 1 },
     consumedAt: { type: Date, default: null },
     requestIp: { type: String, default: null, maxlength: 64 },
+    expiresAt: { type: Date, required: true },
   },
   { collection: 'verificationTokens', timestamps: { createdAt: 'createdAt', updatedAt: false } },
 );

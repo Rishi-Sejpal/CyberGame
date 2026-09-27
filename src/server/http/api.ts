@@ -4,26 +4,29 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { ZodError } from 'zod';
 import { randomUUID } from 'node:crypto';
 import { AppError, fieldErrorsFromZod, isAppError, type ErrorCode } from './errors';
-import { verifyCsrf, logCsrfRejection, type CsrfFailureReason } from '@/server/security/csrf';
+import { verifyCsrf, logCsrfRejection } from '@/server/security/csrf';
 import { checkRateLimit, type RateLimitRule, type RateLimitDecision } from '@/server/security/rate-limit';
 import { clientIp, deviceLabel, ipIdentity, userAgent } from '@/server/security/request';
 import { resolveSession, type SessionUser } from '@/server/security/session';
+import { createCookieJar, cookieSourceFromHeader, type CookieJar } from '@/server/security/cookies';
 import { auditDetached } from '@/server/security/audit';
 import { isProduction } from '@/server/config/env';
 
 /**
- * The single entry point for every mutating API route.
+ * The single entry point for every API route.
  *
  * A handler declared through `withApi` gets, in order:
- *   1. a correlation id (also set as a response header),
+ *   1. a correlation id (also set on the response),
  *   2. CSRF verification (skipped for GET/HEAD/OPTIONS),
  *   3. an IP rate limit,
- *   4. a resolved session (optional — `auth: false` opts out),
- *   5. the handler itself,
- *   6. uniform error translation, with zero leakage for 5xx.
+ *   4. a resolved session (`auth: false` opts out),
+ *   5. a role check when `roles` is declared,
+ *   6. a `CookieJar` bound to the request, applied onto the final response,
+ *   7. the handler itself,
+ *   8. uniform error translation with zero leakage for 5xx.
  *
- * Anything that throws still produces a well-formed JSON body, so a client
- * never has to parse an HTML error page.
+ * Any thrown value still produces a well-formed JSON body, so a client never has
+ * to parse an HTML error page.
  */
 
 export interface ApiContext<S = SessionUser> {
@@ -34,20 +37,22 @@ export interface ApiContext<S = SessionUser> {
   userAgent: string;
   deviceLabel: string;
   requestId: string;
+  /** Cookie reader/writer scoped to this request; writes land on the response. */
+  cookies: CookieJar;
 }
 
 export interface ApiOptions {
   /** Require an authenticated session. Default `true`. */
   auth?: boolean;
-  /** Minimum role for the route. Implies `auth: true`. */
+  /** Minimum roles. Implies `auth: true`. */
   roles?: Array<SessionUser['role']>;
   /** Applied before the handler runs. */
   rateLimit?: RateLimitRule;
-  /** Override the rate-limit identity (e.g. per-account instead of per-IP). */
+  /** Override the rate-limit identity (e.g. per account instead of per IP). */
   rateLimitKey?: (ctx: { request: NextRequest; ip: string | null }) => string;
-  /** Disable CSRF (only for genuinely idempotent, unauthenticated GET-ish reads). */
+  /** Skip CSRF. Reserved for genuinely idempotent reads. */
   skipCsrf?: boolean;
-  /** Human label used in audit entries. */
+  /** Label used in audit entries for this route. */
   auditAction?: string;
 }
 
@@ -64,18 +69,17 @@ export function withApi<S = SessionUser>(handler: ApiHandler<S>, options: ApiOpt
     const requestId = randomUUID();
     const ip = clientIp(request);
     const ua = userAgent(request);
+    const cookies = createCookieJar(cookieSourceFromHeader(request.headers.get('cookie')));
 
     try {
       if (!options.skipCsrf) {
         const csrf = verifyCsrf(request);
         if (!csrf.ok) {
-          logCsrfRejection(request, csrf.reason as CsrfFailureReason);
-          return fail({
-            status: 403,
-            code: 'csrf_rejected',
-            message: csrfMessage(csrf.reason),
-            requestId,
-          });
+          if (csrf.reason) logCsrfRejection(request, csrf.reason);
+          return withCookies(
+            fail({ status: 403, code: 'csrf_rejected', message: csrfMessage(csrf.reason), requestId }),
+            cookies,
+          );
         }
       }
 
@@ -93,21 +97,23 @@ export function withApi<S = SessionUser>(handler: ApiHandler<S>, options: ApiOpt
             userAgent: ua,
             metadata: { rule: options.rateLimit.name, path: pathOf(request), requestId },
           });
-          return rateLimited(decision, requestId);
+          return withCookies(rateLimited(decision, requestId), cookies);
         }
       }
 
       let session: SessionUser | null = null;
       if (requireAuth || allowedRoles) {
-        const resolved = await resolveSession();
-        session = resolved?.user ?? null;
+        session = (await resolveSession(cookies))?.user ?? null;
         if (!session) {
-          return fail({
-            status: 401,
-            code: 'unauthorized',
-            message: 'You must be signed in to do that.',
-            requestId,
-          });
+          return withCookies(
+            fail({
+              status: 401,
+              code: 'unauthorized',
+              message: 'You must be signed in to do that.',
+              requestId,
+            }),
+            cookies,
+          );
         }
         if (allowedRoles && !allowedRoles.includes(session.role)) {
           auditDetached({
@@ -117,20 +123,28 @@ export function withApi<S = SessionUser>(handler: ApiHandler<S>, options: ApiOpt
             userId: session.id,
             ip,
             userAgent: ua,
-            metadata: { path: pathOf(request), required: allowedRoles, actual: session.role, requestId },
+            metadata: {
+              path: pathOf(request),
+              required: allowedRoles.join(','),
+              actual: session.role,
+              requestId,
+            },
           });
-          return fail({
-            status: 403,
-            code: 'forbidden',
-            message: 'You do not have access to this resource.',
-            requestId,
-          });
+          return withCookies(
+            fail({
+              status: 403,
+              code: 'forbidden',
+              message: 'You do not have access to this resource.',
+              requestId,
+            }),
+            cookies,
+          );
         }
       }
 
       const params = routeContext?.params ? await routeContext.params : {};
 
-      const ctx: ApiContext<S> = {
+      const response = await handler({
         request,
         params,
         session: session as S | null,
@@ -138,16 +152,30 @@ export function withApi<S = SessionUser>(handler: ApiHandler<S>, options: ApiOpt
         userAgent: ua,
         deviceLabel: deviceLabel(request),
         requestId,
-      };
+        cookies,
+      });
 
-      const response = await handler(ctx);
       response.headers.set('X-Request-Id', requestId);
       response.headers.set('Cache-Control', 'no-store, max-age=0');
-      return response;
+      return withCookies(response, cookies);
     } catch (error) {
-      return handleError(error, { requestId, path: pathOf(request), ip, userAgent: ua });
+      return withCookies(
+        handleError(error, { requestId, path: pathOf(request), ip, userAgent: ua }),
+        cookies,
+      );
     }
   };
+}
+
+function withCookies(response: Response, jar: CookieJar): Response {
+  // `Response.headers` is immutable in some runtimes once constructed; Next's
+  // `NextResponse` always allows appends, which is what route handlers use.
+  try {
+    jar.applyTo(response);
+  } catch {
+    // Losing a cookie must never convert a valid response into an error.
+  }
+  return response;
 }
 
 function csrfMessage(reason: string | null): string {
@@ -182,7 +210,14 @@ function fail(input: {
   headers?: Record<string, string>;
 }): Response {
   return NextResponse.json(
-    { error: { code: input.code, message: input.message, requestId: input.requestId, ...(input.details ? { details: input.details } : {}) } },
+    {
+      error: {
+        code: input.code,
+        message: input.message,
+        requestId: input.requestId,
+        ...(input.details ? { details: input.details } : {}),
+      },
+    },
     { status: input.status, headers: { 'X-Request-Id': input.requestId, ...(input.headers ?? {}) } },
   );
 }
@@ -251,9 +286,8 @@ function handleError(
     });
   }
 
-  // Duplicate key from Mongo — surface as a conflict, never as a 500.
-  const mongoCode = (error as { code?: number } | null)?.code;
-  if (mongoCode === 11000) {
+  // Mongo duplicate key -> a clean 409, never a 500.
+  if ((error as { code?: number } | null)?.code === 11000) {
     return fail({
       status: 409,
       code: 'conflict',
@@ -284,7 +318,7 @@ function handleError(
     // Uniform message: never the driver error, never the stack.
     message: isProduction()
       ? 'Something went wrong on our side.'
-      : 'Something went wrong on our side. See the server logs for the correlation id.',
+      : 'Something went wrong on our side. Quote the request id when reporting this.',
     requestId: ctx.requestId,
   });
 }
