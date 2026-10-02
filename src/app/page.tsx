@@ -15,9 +15,15 @@ export const dynamic = 'force-dynamic';
  * "Dashboard" — which is the whole reason this is not a Client Component.
  */
 export default async function LandingPage() {
-  const store = await cookies();
-  const jar = createCookieJar(cookieSourceFromStore(store));
-  const session = await resolveSession(jar);
+  let session = null;
+  try {
+    const store = await cookies();
+    const jar = createCookieJar(cookieSourceFromStore(store));
+    session = await resolveSession(jar);
+  } catch {
+    // Session resolution failed (e.g., DB unavailable) — treat as unsigned
+    session = null;
+  }
 
   return (
     <div className="flex min-h-dvh flex-col">
