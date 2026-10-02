@@ -1,30 +1,13 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
-import { createCookieJar, cookieSourceFromStore } from '@/server/security/cookies';
-import { resolveSession } from '@/server/security/session';
 import { MODULES_PLANNED_NOTE } from './landing-links';
-
-export const dynamic = 'force-dynamic';
+import { LandingCTA } from './landing-cta';
 
 /**
- * Marketing landing page.
- *
- * A Server Component that resolves the session once, server-side, purely to pick
- * the right call to action ("Enter the grid" vs "Create a callsign"). It renders
- * identical markup either way — no `useEffect` flash from "Sign in" to
- * "Dashboard" — which is the whole reason this is not a Client Component.
+ * Marketing landing page — fully static (no server-side session).
+ * The CTA buttons are a tiny Client Component that reads auth state from context,
+ * avoiding hydration mismatches when server-side DB is unavailable.
  */
-export default async function LandingPage() {
-  let session = null;
-  try {
-    const store = await cookies();
-    const jar = createCookieJar(cookieSourceFromStore(store));
-    session = await resolveSession(jar);
-  } catch {
-    // Session resolution failed (e.g., DB unavailable) — treat as unsigned
-    session = null;
-  }
-
+export default function LandingPage() {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-line/60">
@@ -36,20 +19,7 @@ export default async function LandingPage() {
             CYBERGRID
           </p>
           <nav aria-label="Account" className="flex items-center gap-2">
-            {session ? (
-              <Link href="/dashboard" className="btn btn-primary px-4 py-2 text-xs">
-                Enter the grid
-              </Link>
-            ) : (
-              <>
-                <Link href="/login" className="btn btn-ghost px-4 py-2 text-xs">
-                  Sign in
-                </Link>
-                <Link href="/register" className="btn btn-primary px-4 py-2 text-xs">
-                  Start free
-                </Link>
-              </>
-            )}
+            <LandingCTA />
           </nav>
         </div>
       </header>
@@ -70,12 +40,7 @@ export default async function LandingPage() {
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link
-                href={session ? '/dashboard' : '/register'}
-                className="btn btn-primary px-6 py-3"
-              >
-                {session ? 'Continue training' : 'Create a free callsign'}
-              </Link>
+              <LandingCTA variant="hero" />
               <Link href="#curriculum" className="btn btn-ghost px-6 py-3">
                 See what you learn
               </Link>
