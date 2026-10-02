@@ -13,7 +13,20 @@ export default defineConfig({
     testTimeout: 30_000,
     hookTimeout: 60_000,
     pool: 'forks',
-    poolOptions: { forks: { singleFork: true } },
+    /*
+     * The suite is deliberately serial. Two shared pieces of global state make
+     * parallel files unsafe:
+     *
+     *  - the rate limiter's bucket store is module-global, and
+     *  - every file talks to the same throwaway MongoDB database.
+     *
+     * A file that signs in repeatedly would otherwise throttle a file that runs
+     * later, purely by scheduling luck. Vitest 5 replaced the old
+     * `poolOptions.forks.singleFork` with this flag; leaving the old key in place
+     * is silently ignored and quietly turns the suite parallel again, which is
+     * why the two identifiers below are also unique per file.
+     */
+    fileParallelism: false,
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',

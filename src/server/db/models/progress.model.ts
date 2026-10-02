@@ -72,7 +72,7 @@ const challengeProgressSchema = defineSchema<ChallengeProgress>(
     completedAt: { type: Date, default: null },
     xpAwarded: { type: Number, required: true, default: 0, min: 0 },
   },
-  { collection: '_challengesProgress' },
+  { collection: '_challengeProgress' },
 );
 
 const progressSchema = defineSchema<ProgressDoc>(

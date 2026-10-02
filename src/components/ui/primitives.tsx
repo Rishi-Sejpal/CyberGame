@@ -11,6 +11,9 @@ import { cn } from '@/lib/utils';
  * behaviour working.
  */
 
+// Re-export enhanced components
+export { StyledLink, GlowBorder, Tooltip, Avatar, Badge } from './enhanced';
+
 type ButtonVariant = 'primary' | 'violet' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
 

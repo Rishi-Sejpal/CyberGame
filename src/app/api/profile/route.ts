@@ -96,9 +96,12 @@ export const PATCH = withApi(
     }
 
     if (body.settings) {
-      // Settings live on the save document; `$set` on a dotted key means a
-      // malicious key such as "$where" is impossible — the schema is strict and
-      // the client can only supply primitive values.
+      // Settings live on the save document, whose `settings` field is a `Mixed`
+      // object, so the key shape is the only thing standing between user input
+      // and a dotted `$set` path. `updateProfileSchema` enforces
+      // `SETTINGS_KEY_RE` (`^[a-zA-Z][a-zA-Z0-9_]{0,39}$`), which is what makes
+      // this loop safe: no `$` prefix, no `.` nesting, no `__proto__`. Do not
+      // relax that pattern without revisiting this line.
       await GameSaveModel.updateOne(
         { userId: ctx.session!.id },
         {

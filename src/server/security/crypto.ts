@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createHash, randomBytes, randomInt } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { env } from '@/server/config/env';
 import { timingSafeEqual } from './timing';
 
@@ -20,13 +20,6 @@ const SECRET_BYTES = 32;
 /** Raw, URL-safe secret suitable for handing to a client (cookie, email link). */
 export function generateSecret(bytes = SECRET_BYTES): string {
   return randomBytes(bytes).toString('base64url');
-}
-
-/** One-time numeric code for email verification / 2FA style confirmations. */
-export function generateNumericCode(digits = 6): string {
-  const max = 10 ** digits;
-  const value = randomInt(0, max);
-  return value.toString().padStart(digits, '0');
 }
 
 /** Deterministic, irreversible digest of a secret. Safe to store in Mongo. */

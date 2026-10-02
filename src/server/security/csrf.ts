@@ -5,6 +5,7 @@ import { env, cookiesAreSecure, isOriginAllowed } from '@/server/config/env';
 import { constantTimeEqual, generateSecret, hashToken } from './crypto';
 import { auditDetached } from './audit';
 import { readCookie, type CookieJar } from './cookies';
+import { clientIp, userAgent } from './request';
 
 /**
  * CSRF protection — three independent layers.
@@ -101,8 +102,11 @@ export function logCsrfRejection(request: NextRequest | Request, reason: CsrfFai
     event: 'auth.csrf_rejected',
     severity: 'warning',
     outcome: 'blocked',
-    ip: request.headers.get('cf-connecting-ip'),
-    userAgent: request.headers.get('user-agent')?.slice(0, 400) ?? null,
+    // `clientIp`, never a raw header read: an unvalidated `cf-connecting-ip`
+    // would let an attacker file their rejections against someone else's IP and
+    // poison incident response.
+    ip: clientIp(request),
+    userAgent: userAgent(request),
     metadata: { reason, method: request.method, path: safePath(request) },
   });
 }

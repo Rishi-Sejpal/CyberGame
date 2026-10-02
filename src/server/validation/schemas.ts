@@ -119,6 +119,23 @@ export const changePasswordSchema = z
     message: 'New password must be different from the current one.',
   });
 
+/**
+ * Preference keys are written as *dotted* MongoDB `$set` paths
+ * (`settings.<key>`) into a `Mixed` field, so a key must be a plain identifier.
+ * Rejecting `.` and `$` is what actually makes that safe:
+ *
+ *  - `"$where"` would be sent to the server as `settings.$where` and rejected
+ *    by MongoDB ("dollar ($) prefixed field ... is not valid for storage"),
+ *    turning a user preference into an unhandled 500.
+ *  - `"a.b"` would be interpreted as a nested path rather than a literal key.
+ *  - `"__proto__"` / `"constructor"` are blocked by the leading-letter rule,
+ *    which keeps a `Record` key from ever reaching an object prototype.
+ *
+ * The value union is separately limited to primitives, so no nested object can
+ * be injected.
+ */
+const SETTINGS_KEY_RE = /^[a-zA-Z][a-zA-Z0-9_]{0,39}$/;
+
 export const updateProfileSchema = z
   .object({
     displayName: z.string().trim().min(1, 'Display name is required.').max(32).optional(),
@@ -129,7 +146,10 @@ export const updateProfileSchema = z
       .optional(),
     /** UI preferences only. Never accepted as progression. */
     settings: z
-      .record(z.string().max(40), z.union([z.boolean(), z.number().finite(), z.string().max(200)]))
+      .record(
+        z.string().max(40).regex(SETTINGS_KEY_RE, 'Invalid setting name.'),
+        z.union([z.boolean(), z.number().finite(), z.string().max(200)]),
+      )
       .refine((v) => Object.keys(v).length <= 25, 'Too many settings.')
       .optional(),
   })

@@ -9,8 +9,14 @@ import { defineSchema, registerModel } from '../model-kit';
  *   outbound email link.
  * - `purpose` is a discriminator so a verification link can never be replayed
  *   against the reset endpoint (and vice versa).
- * - `attemptCount` allows limited brute-forcing of the short numeric code path
- *   without a separate rate-limit collection.
+ * - The token is 256 bits of CSPRNG output, so it is not guessable and needs no
+ *   attempt counter: a short numeric code would, but there is no code flow —
+ *   verification is link-only. An earlier revision stored a `codeHash` plus
+ *   `attemptsRemaining`/`maxAttempts` that nothing ever read or enforced; those
+ *   fields only *looked* like brute-force protection, so they are gone rather
+ *   than left to rot.
+ * - Consumption is a single atomic `updateOne({ consumedAt: null })`, so a
+ *   replayed token loses the race and fails.
  * - Mongo TTL removes the row `expiresAt` seconds after expiry, so there is no
  *   cleanup job to forget.
  */
@@ -23,10 +29,6 @@ export interface VerificationTokenDoc {
   userId: string;
   purpose: TokenPurpose;
   tokenHash: string;
-  /** Numeric one-time code, stored hashed. Null for link-only flows. */
-  codeHash: string | null;
-  attemptsRemaining: number;
-  maxAttempts: number;
   createdAt: Date;
   expiresAt: Date;
   consumedAt: Date | null;
@@ -38,9 +40,6 @@ const tokenSchema = defineSchema<VerificationTokenDoc>(
     userId: { type: String, required: true, index: true },
     purpose: { type: String, required: true, enum: TOKEN_PURPOSES },
     tokenHash: { type: String, required: true, unique: true },
-    codeHash: { type: String, default: null },
-    attemptsRemaining: { type: Number, required: true, default: 5, min: 0 },
-    maxAttempts: { type: Number, required: true, default: 5, min: 1 },
     consumedAt: { type: Date, default: null },
     requestIp: { type: String, default: null, maxlength: 64 },
     expiresAt: { type: Date, required: true },

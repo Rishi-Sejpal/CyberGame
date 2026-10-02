@@ -88,7 +88,15 @@ export function needsRehash(stored: string): boolean {
   const parsed = inspectHash(stored);
   if (!parsed) return true;
   if (parsed.algorithm !== PASSWORD_ALGORITHM) return true;
-  return parsed.memoryCost < target.memoryCost || parsed.timeCost < target.timeCost;
+  // Every encoded parameter is compared, not just m/t. A hash written with a
+  // lower `parallelism` is cheaper to attack just as much as one with a lower
+  // memory cost, and it is a parameter we do control from the environment — so
+  // leaving it out here would silently keep weaker hashes alive forever.
+  return (
+    parsed.memoryCost < target.memoryCost ||
+    parsed.timeCost < target.timeCost ||
+    parsed.parallelism < target.parallelism
+  );
 }
 
 export const PASSWORD_HASH_PREFIX = '$argon2id$';

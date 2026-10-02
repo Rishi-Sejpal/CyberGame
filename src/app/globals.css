@@ -375,11 +375,72 @@
   }
 }
 
+@keyframes cg-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes cg-glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgb(63 245 192 / 0.35),
+      0 0 24px -6px rgb(63 245 192 / 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgb(63 245 192 / 0.6),
+      0 0 32px -4px rgb(63 245 192 / 0.7);
+  }
+}
+
+@keyframes cg-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes cg-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes cg-border-glow {
+  0%,
+  100% {
+    border-color: var(--color-line);
+  }
+  50% {
+    border-color: var(--color-neon-dim);
+  }
+}
+
 .animate-fade-up {
   animation: cg-fade-up 220ms ease-out both;
 }
 .animate-pop-in {
   animation: cg-pop-in 200ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+.animate-slide-in-right {
+  animation: cg-slide-in-right 180ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.animate-scale-in {
+  animation: cg-scale-in 160ms cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
 }
 .animate-pulse-ring {
   animation: cg-pulse-ring 1.8s ease-in-out infinite;
@@ -389,6 +450,14 @@
 }
 .animate-blink {
   animation: cg-blink 1.1s steps(1) infinite;
+}
+.animate-glow-pulse {
+  animation: cg-glow-pulse 2s ease-in-out infinite;
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, var(--color-line), var(--color-neon-dim), var(--color-line));
+  background-size: 200% 100%;
+  animation: cg-shimmer 1.5s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -407,4 +476,61 @@
   image-rendering: crisp-edges;
   display: block;
   touch-action: none;
+}
+
+/* Enhanced focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-neon);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Micro-interaction: subtle lift on hover for panels */
+.panel:hover {
+  box-shadow:
+    var(--shadow-panel),
+    0 0 0 1px var(--color-neon-dim);
+  transition: box-shadow 150ms ease;
+}
+
+/* Enhanced button press feedback */
+.btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+
+/* Input focus glow */
+.field:focus {
+  outline: none;
+  border-color: var(--color-neon-dim);
+  box-shadow:
+    0 0 0 3px rgb(63 245 192 / 0.14),
+    0 0 16px -4px rgb(63 245 192 / 0.3);
+}
+
+/* Chip hover effect */
+.chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -4px currentColor;
+  transition:
+    transform 100ms ease,
+    box-shadow 100ms ease;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Pixel-perfect image rendering for retro assets */
+img[src$='.png'],
+img[src$='.gif'],
+img[src$='.webp'] {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Selection style */
+::selection {
+  background: rgb(63 245 192 / 0.28);
+  color: #fff;
 }

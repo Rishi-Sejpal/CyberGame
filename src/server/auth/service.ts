@@ -11,7 +11,7 @@ import {
   needsRehash,
   verifyPassword,
 } from '@/server/security/password';
-import { generateSecret, hashToken, generateNumericCode } from '@/server/security/crypto';
+import { generateSecret, hashToken } from '@/server/security/crypto';
 import {
   createSession,
   destroyCurrentSession,
@@ -341,6 +341,16 @@ export async function loginUser(
     );
   }
 
+  const wasRehashed = needsRehash(user.passwordHash);
+
+  if (wasRehashed) {
+    const upgraded = await hashPassword(input.password);
+    await UserModel.updateOne(
+      { _id: user._id, passwordHash: user.passwordHash },
+      { $set: { passwordHash: upgraded } },
+    );
+  }
+
   await UserModel.updateOne(
     { _id: user._id },
     {
@@ -384,7 +394,7 @@ export async function loginUser(
     userId: String(user._id),
     ip: ctx.ip,
     userAgent: ctx.userAgent,
-    metadata: { username: user.username, rehash: needsRehash(user.passwordHash) },
+    metadata: { username: user.username, rehash: wasRehashed },
   });
 
   // Assign rather than spread: `user` is a hydrated mongoose document, and
@@ -431,7 +441,6 @@ export async function logoutEverywhere(
 
 export async function issueVerificationToken(userId: string, ip: string | null): Promise<string> {
   const token = generateSecret(32);
-  const code = generateNumericCode(6);
   await VerificationTokenModel.updateMany(
     { userId, purpose: 'email_verification', consumedAt: null },
     { $set: { consumedAt: new Date() } },
@@ -440,9 +449,6 @@ export async function issueVerificationToken(userId: string, ip: string | null):
     userId,
     purpose: 'email_verification',
     tokenHash: hashToken(token),
-    codeHash: hashToken(code),
-    attemptsRemaining: 5,
-    maxAttempts: 5,
     expiresAt: new Date(Date.now() + VERIFICATION_TTL_MS),
     requestIp: ip,
   });
@@ -517,7 +523,7 @@ export async function verifyEmailToken(
     userAgent: ctx.userAgent,
   });
 
-  return toPublicUser(user as unknown as UserDoc);
+  return toPublicUser(user);
 }
 
 // ---------------------------------------------------------------------------
@@ -556,9 +562,6 @@ export async function requestPasswordReset(
     userId: String(user._id),
     purpose: 'password_reset',
     tokenHash: hashToken(token),
-    codeHash: null,
-    attemptsRemaining: 5,
-    maxAttempts: 5,
     expiresAt: new Date(Date.now() + RESET_TTL_MS),
     requestIp: ctx.ip,
   });

@@ -9,6 +9,7 @@ import { csrfCookieName } from '@/server/security/csrf';
 import { AuthProvider } from '@/components/auth/auth-provider';
 import { AppShell } from '@/components/app/app-shell';
 import { toPublicUser } from '@/server/auth/service';
+import { PageErrorBoundary } from '@/components/ui/error-boundary';
 import {
   asTierId,
   normalizeStats,
@@ -51,7 +52,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         sessionExpiresAt={sessionExpiresAt}
         unverified={!user.view.emailVerified}
       >
-        {children}
+        <PageErrorBoundary>{children}</PageErrorBoundary>
       </AppShell>
     </AuthProvider>
   );

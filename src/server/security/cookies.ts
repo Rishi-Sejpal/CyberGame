@@ -59,7 +59,6 @@ export function serializeCookie(name: string, value: string, options: CookieOpti
   if (options.httpOnly) parts.push('HttpOnly');
   if (options.sameSite) parts.push(`SameSite=${capitalize(options.sameSite)}`);
   if (secure) parts.push('Secure');
-  if (options.httpOnly !== false && name.startsWith('__Host-')) parts.push('HttpOnly');
 
   return parts.join('; ');
 }

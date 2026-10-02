@@ -21,16 +21,17 @@ import { isProduction } from '@/server/config/env';
  *
  * A handler declared through `withApi` gets, in order:
  *   1. a correlation id (also set on the response),
- *   2. CSRF verification (skipped for GET/HEAD/OPTIONS),
- *   3. an IP rate limit,
- *   4. a resolved session (`auth: false` opts out),
- *   5. a role check when `roles` is declared,
- *   6. a `CookieJar` bound to the request, applied onto the final response,
- *   7. the handler itself,
- *   8. uniform error translation with zero leakage for 5xx.
+ *   2. an IP rate limit,
+ *   3. a resolved session (`auth: false` opts out),
+ *   4. a role check when `roles` is declared,
+ *   5. a `CookieJar` bound to the request, applied onto the final response,
+ *   6. the handler itself,
+ *   7. uniform error translation with zero leakage for 5xx.
  *
  * Any thrown value still produces a well-formed JSON body, so a client never has
  * to parse an HTML error page.
+ *
+ * CSRF protection is enforced by the edge middleware on all mutations.
  */
 
 export interface ApiContext<S = SessionUser> {
@@ -54,8 +55,6 @@ export interface ApiOptions {
   rateLimit?: RateLimitRule;
   /** Override the rate-limit identity (e.g. per account instead of per IP). */
   rateLimitKey?: (ctx: { request: NextRequest; ip: string | null }) => string;
-  /** Skip CSRF. Reserved for genuinely idempotent reads. */
-  skipCsrf?: boolean;
   /** Label used in audit entries for this route. */
   auditAction?: string;
 }
@@ -76,22 +75,12 @@ export function withApi<S = SessionUser>(handler: ApiHandler<S>, options: ApiOpt
     const cookies = createCookieJar(cookieSourceFromHeader(request.headers.get('cookie')));
 
     try {
-      if (!options.skipCsrf) {
-        const csrf = verifyCsrf(request);
-        if (!csrf.ok) {
-          if (csrf.reason) logCsrfRejection(request, csrf.reason);
-          return withCookies(
-            fail({
-              status: 403,
-              code: 'csrf_rejected',
-              message: csrfMessage(csrf.reason),
-              requestId,
-            }),
-            cookies,
-          );
-        }
-      }
-
+      // Order matters. The rate limit runs *first* because it is the only gate
+      // that has no side effects, while a CSRF rejection writes an audit
+      // document. Running CSRF first let an unauthenticated client write one
+      // audit row per request, unbounded, simply by omitting the token — an
+      // audit-log-filling denial of service. Rate limiting first bounds that
+      // write amplification per client.
       if (options.rateLimit) {
         const identity = options.rateLimitKey
           ? options.rateLimitKey({ request, ip })
@@ -107,6 +96,24 @@ export function withApi<S = SessionUser>(handler: ApiHandler<S>, options: ApiOpt
             metadata: { rule: options.rateLimit.name, path: pathOf(request), requestId },
           });
           return withCookies(rateLimited(decision, requestId), cookies);
+        }
+      }
+
+      // CSRF validation as defense-in-depth (middleware also validates on mutations).
+      // Runs after rate limit to bound audit-log writes per client.
+      if (request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS') {
+        const csrf = verifyCsrf(request);
+        if (!csrf.ok) {
+          if (csrf.reason) logCsrfRejection(request, csrf.reason);
+          return withCookies(
+            fail({
+              status: 403,
+              code: 'csrf_rejected',
+              message: csrfMessage(csrf.reason),
+              requestId,
+            }),
+            cookies,
+          );
         }
       }
 

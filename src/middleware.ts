@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { allowedOrigins, cookiesAreSecure, env } from '@/server/config/env';
+import { allowedOrigins, cookiesAreSecure, env, isProduction } from '@/server/config/env';
 import { readCookie, serializeCookie, type CookieOptions } from '@/server/security/cookies';
 import { timingSafeEqual } from '@/server/security/timing';
 import { generateCsrfToken, isWellFormedCsrfToken } from '@/server/security/csrf-token';
@@ -13,8 +13,7 @@ import { generateCsrfToken, isWellFormedCsrfToken } from '@/server/security/csrf
  *     submitted. The cookie is `HttpOnly: false` on purpose — the double-submit
  *     scheme requires the page to read it back into the `x-csrf-token` header.
  *  2. **Reject cross-site mutations before they reach a route handler.** The
- *     Origin allowlist means a hostile page cannot make the request at all;
- *     `verifyCsrf` inside `withApi` is the second layer.
+ *     Origin allowlist means a hostile page cannot make the request at all.
  *  3. **Redirect unauthenticated visitors** away from protected pages, so a
  *     protected Server Component never has to handle "no user".
  *  4. **Set hardening headers** that Next does not set for us.
@@ -167,6 +166,14 @@ function finish(
   );
   if (request.nextUrl.pathname.startsWith('/api/')) {
     response.headers.set('Cache-Control', 'no-store, max-age=0');
+  }
+
+  // CSP for edge runtime - mirrors next.config.ts for defense in depth
+  if (isProduction()) {
+    response.headers.set(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:; worker-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests",
+    );
   }
 
   if (shouldSetCsrf) {

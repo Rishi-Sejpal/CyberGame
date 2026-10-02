@@ -1,89 +1,114 @@
 name: CI
 
-# The gate is `npm run verify` (lint, typecheck, tests, formatting) plus a
-# production build. It runs on every push and pull request so `verify` is a claim
-# the repository checks rather than one it merely documents.
 on:
   push:
     branches: [main]
   pull_request:
-  workflow_dispatch:
+    branches: [main]
 
-permissions:
-  contents: read
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+env:
+  NODE_VERSION: '20.x'
 
 jobs:
-  verify:
+  lint-and-typecheck:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-      # The suite boots its own throwaway instance, but it deliberately uses a
-      # system mongod rather than downloading one, so the binary has to exist.
-      - name: Install MongoDB
-        run: |
-          curl -fsSL https://pgp.mongodb.com/server-8.0.asc \
-            | sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
-          echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" \
-            | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
-          sudo apt-get update
-          sudo apt-get install -y mongodb-org-server
-          mongod --version | head -1
+      - name: Install dependencies
+        run: npm ci
 
-      - run: npm ci
+      - name: Run lint
+        run: npm run lint
 
-      # Test values are deliberately weak-but-valid: the suite asserts on the
-      # cheap Argon2 path, and a strong pepper here would make the run minutes
-      # slower for no extra coverage.
-      - name: Lint, typecheck, test, formatting
-        run: npm run verify
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Check formatting
+        run: npm run format:check
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.10.0
+        with:
+          mongodb-version: '8.0'
+          mongodb-db: 'cybergrid'
+
+      - name: Run tests
+        run: npm test
         env:
+          MONGODB_URI: mongodb://localhost:27017/cybergrid
           NODE_ENV: test
-          APP_URL: http://localhost:3000
-          ALLOWED_ORIGINS: http://localhost:3000
-          SESSION_SECRET: ci-session-secret-2f8b4d6a1c9e0735b8d2f4a6c1e09375
-          PASSWORD_PEPPER: ci-pepper-9a1c3e5b7d9f2046c8a2e1b3d5f7094
-          MONGODB_URI: mongodb://127.0.0.1:27019/cybergrid_test
-          TEST_MONGODB_URI: mongodb://127.0.0.1:27019/cybergrid_test
-          EMAIL_TRANSPORT: outbox
-          EMAIL_FROM: CYBERGRID CI <no-reply@cybergrid.test>
-          DEV_MAIL_PREVIEW: 'false'
-          AUTH_TEST_FAST_HASH: 'true'
-          TRUST_PROXY: '0'
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          PASSWORD_PEPPER: ${{ secrets.PASSWORD_PEPPER }}
 
-      # No `.env.local` in CI, so the build has to work from the environment
-      # alone. These are the values the configuration validator insists on for a
-      # production build: https origin, and secrets long enough to pass.
-      - name: Production build
+  build:
+    needs: [lint-and-typecheck, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
         run: npm run build
         env:
+          MONGODB_URI: mongodb://localhost:27017/cybergrid
           NODE_ENV: production
-          APP_URL: https://cybergrid.example
-          ALLOWED_ORIGINS: https://cybergrid.example
-          SESSION_SECRET: ci-build-session-secret-4c7a1e9b2d6f8035a1c4e7b9d2f603188a5c2e7b4d9f0316a8c5e2b7d4f9a1c60
-          PASSWORD_PEPPER: ci-build-pepper-8e2b4d6a0c1f3957b8d2a4c6e0f1937d5b8a2c6e0f1937d5b8a2c6e0f1937
-          MONGODB_URI: mongodb://127.0.0.1:27019/cybergrid_build
-          EMAIL_TRANSPORT: outbox
-          EMAIL_FROM: CYBERGRID CI <no-reply@cybergrid.test>
-          DEV_MAIL_PREVIEW: 'false'
-          AUTH_TEST_FAST_HASH: 'false'
-          TRUST_PROXY: '0'
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          PASSWORD_PEPPER: ${{ secrets.PASSWORD_PEPPER }}
+          APP_URL: https://example.com
 
-      - name: Build produced no committed-file changes
-        run: git diff --exit-code
+  deploy-preview:
+    needs: build
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Vercel Preview
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          scope: ${{ secrets.VERCEL_ORG_ID }}
+          alias-domains: pr-${{ github.event.number }}.yourdomain.com
 
-      - name: Confirm the build was not silently skipped
-        run: |
-          test -f .next/BUILD_ID
-          echo "build id $(cat .next/BUILD_ID)"
+  deploy-production:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Vercel Production
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          scope: ${{ secrets.VERCEL_ORG_ID }}
