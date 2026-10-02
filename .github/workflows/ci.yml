@@ -90,6 +90,8 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Deploy to Vercel Preview
         uses: amondnet/vercel-action@v25
         with:
@@ -104,6 +106,8 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Deploy to Vercel Production
         uses: amondnet/vercel-action@v25
         with:
